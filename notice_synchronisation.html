@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notice de Synchronisation - Cartographie Coffrets</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            line-height: 1.6;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #667eea;
+            border-bottom: 4px solid #667eea;
+            padding-bottom: 15px;
+            font-size: 32px;
+            margin-top: 0;
+        }
+        h2 {
+            color: #764ba2;
+            margin-top: 35px;
+            font-size: 24px;
+            border-left: 5px solid #764ba2;
+            padding-left: 15px;
+        }
+        h3 {
+            color: #5f3dc4;
+            font-size: 18px;
+            margin-top: 25px;
+        }
+        .method-box {
+            background: #f8f9fa;
+            border-left: 5px solid #667eea;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .method-box h3 {
+            margin-top: 0;
+            color: #667eea;
+        }
+        .step {
+            background: #fff;
+            border: 2px solid #e0e0e0;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            position: relative;
+        }
+        .step-number {
+            position: absolute;
+            top: -15px;
+            left: 20px;
+            background: #667eea;
+            color: white;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .step-content {
+            margin-top: 10px;
+        }
+        .warning {
+            background: #fff3cd;
+            border-left: 5px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .info {
+            background: #d1ecf1;
+            border-left: 5px solid #0dcaf0;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .success {
+            background: #d4edda;
+            border-left: 5px solid #28a745;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        code {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+        pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            border: 2px solid #667eea;
+        }
+        .screenshot-placeholder {
+            background: #f0f0f0;
+            border: 2px dashed #ccc;
+            padding: 40px;
+            text-align: center;
+            margin: 20px 0;
+            border-radius: 8px;
+            color: #666;
+            font-style: italic;
+        }
+        ul {
+            margin-left: 25px;
+        }
+        li {
+            margin: 10px 0;
+        }
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .comparison-table th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+        .comparison-table td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+        }
+        .comparison-table tr:hover {
+            background: #f8f9fa;
+        }
+        .button-example {
+            display: inline-block;
+            background: #00b894;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-weight: bold;
+            text-decoration: none;
+            margin: 5px;
+        }
+        .tip {
+            background: #e7f3ff;
+            border-left: 5px solid #2196F3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .tip strong {
+            color: #2196F3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 Notice de Synchronisation</h1>
+        <p style="font-size: 18px; color: #666;">Cartographie des Coffrets Électriques - Admin ↔ Lecture Seule</p>
+        
+        <div class="info">
+            <strong>📖 Objectif de cette notice :</strong><br>
+            Vous apprendrez à transférer les données (coffrets, photos, liens) de la version <strong>Admin</strong> vers la version <strong>Lecture seule</strong> pour que votre équipe ait accès aux dernières mises à jour.
+        </div>
+
+        <h2>📋 Comprendre le principe</h2>
+        
+        <div class="method-box">
+            <h3>🔐 Version Admin</h3>
+            <ul>
+                <li>Vous ajoutez, modifiez, supprimez des coffrets</li>
+                <li>Vous uploadez des photos et ajoutez des liens</li>
+                <li>Les données sont stockées <strong>localement</strong> dans votre navigateur</li>
+            </ul>
+        </div>
+
+        <div class="method-box">
+            <h3>👁️ Version Lecture Seule</h3>
+            <ul>
+                <li>Votre équipe consulte les coffrets</li>
+                <li>Les données sont aussi stockées <strong>localement</strong> dans leur navigateur</li>
+                <li>Pour voir vos modifications, il faut <strong>synchroniser</strong></li>
+            </ul>
+        </div>
+
+        <div class="warning">
+            <strong>⚠️ Important :</strong><br>
+            Les deux cartes utilisent le <strong>localStorage</strong> du navigateur. Chaque navigateur a son propre stockage. Il faut donc <strong>exporter → importer</strong> pour transférer les données.
+        </div>
+
+        <h2>🎯 Méthode Recommandée : Export/Import</h2>
+
+        <div class="step">
+            <div class="step-number">1</div>
+            <div class="step-content">
+                <h3>📤 Exporter depuis la carte Admin</h3>
+                <p>Ouvrez la <strong>carte_admin.html</strong> et connectez-vous avec votre mot de passe.</p>
+                <p>En bas à gauche, cliquez sur le bouton :</p>
+                <p><span class="button-example">💾 Exporter</span></p>
+                <p>Un fichier JSON est téléchargé, par exemple :</p>
+                <code>coffrets_electriques_hybrid_2026-02-08.json</code>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">2</div>
+            <div class="step-content">
+                <h3>📁 Sauvegarder le fichier JSON</h3>
+                <p>Le fichier est dans vos <strong>Téléchargements</strong>.</p>
+                <p>Conservez-le précieusement :</p>
+                <ul>
+                    <li>✅ Sauvegarde de toutes vos données</li>
+                    <li>✅ Restauration en cas de problème</li>
+                    <li>✅ Transfert vers d'autres navigateurs/ordinateurs</li>
+                </ul>
+                <div class="tip">
+                    <strong>💡 Conseil :</strong> Créez un dossier "Sauvegardes Cartographie" et nommez vos fichiers avec la date, ex: <code>2026-02-08_coffrets.json</code>
+                </div>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">3</div>
+            <div class="step-content">
+                <h3>📤 Partager le fichier avec l'équipe</h3>
+                <p>Plusieurs options :</p>
+                <ul>
+                    <li><strong>SharePoint</strong> : Uploadez le JSON dans la même bibliothèque que les cartes</li>
+                    <li><strong>Email</strong> : Envoyez le fichier par email (si petit < 5 MB)</li>
+                    <li><strong>Drive partagé</strong> : Google Drive, OneDrive, Dropbox</li>
+                    <li><strong>Réseau local</strong> : Dossier partagé</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">4</div>
+            <div class="step-content">
+                <h3>📥 Importer dans la carte Lecture Seule</h3>
+                <p>Chaque membre de l'équipe doit :</p>
+                <ol>
+                    <li>Télécharger le fichier JSON</li>
+                    <li>Ouvrir <strong>carte_lecture_seule.html</strong></li>
+                    <li>Cliquer sur le bouton : <span class="button-example">📂 Importer</span></li>
+                    <li>Sélectionner le fichier JSON téléchargé</li>
+                    <li>Confirmer l'importation</li>
+                </ol>
+                <div class="success">
+                    <strong>✅ Synchronisation terminée !</strong><br>
+                    L'équipe voit maintenant toutes vos modifications.
+                </div>
+            </div>
+        </div>
+
+        <h2>⚡ Méthode Avancée : Console Navigateur</h2>
+
+        <div class="warning">
+            <strong>⚠️ Pour utilisateurs avancés uniquement</strong><br>
+            Cette méthode nécessite d'utiliser la console du navigateur (F12).
+        </div>
+
+        <div class="step">
+            <div class="step-number">1</div>
+            <div class="step-content">
+                <h3>📤 Exporter les données (Admin)</h3>
+                <ol>
+                    <li>Ouvrez <strong>carte_admin.html</strong></li>
+                    <li>Appuyez sur <strong>F12</strong> (outils développeur)</li>
+                    <li>Allez dans l'onglet <strong>Console</strong></li>
+                    <li>Tapez cette commande et appuyez sur Entrée :</li>
+                </ol>
+                <pre>console.log(localStorage.getItem('coffrets_data_hybrid_v1'));</pre>
+                <ol start="5">
+                    <li>Un long texte JSON s'affiche</li>
+                    <li><strong>Clic droit</strong> sur le texte → <strong>Copier</strong></li>
+                    <li>Collez dans un fichier texte et sauvegardez</li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">2</div>
+            <div class="step-content">
+                <h3>📥 Importer les données (Lecture Seule)</h3>
+                <ol>
+                    <li>Ouvrez <strong>carte_lecture_seule.html</strong></li>
+                    <li>Appuyez sur <strong>F12</strong></li>
+                    <li>Allez dans l'onglet <strong>Console</strong></li>
+                    <li>Tapez cette commande (remplacez VOTRE_JSON par les données copiées) :</li>
+                </ol>
+                <pre>localStorage.setItem('coffrets_data_hybrid_v1', 'VOTRE_JSON_ICI');</pre>
+                <ol start="5">
+                    <li>Appuyez sur <strong>Entrée</strong></li>
+                    <li>Rechargez la page (<strong>F5</strong>)</li>
+                </ol>
+                <div class="success">
+                    ✅ Données synchronisées !
+                </div>
+            </div>
+        </div>
+
+        <h2>📅 Fréquence de Synchronisation</h2>
+
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Fréquence</th>
+                    <th>Quand l'utiliser</th>
+                    <th>Avantages</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Quotidienne</strong></td>
+                    <td>Modifications fréquentes (plusieurs coffrets/jour)</td>
+                    <td>Équipe toujours à jour</td>
+                </tr>
+                <tr>
+                    <td><strong>Hebdomadaire</strong></td>
+                    <td>Modifications régulières mais pas quotidiennes</td>
+                    <td>Bon équilibre temps/fraîcheur</td>
+                </tr>
+                <tr>
+                    <td><strong>Mensuelle</strong></td>
+                    <td>Peu de modifications</td>
+                    <td>Moins de maintenance</td>
+                </tr>
+                <tr>
+                    <td><strong>À la demande</strong></td>
+                    <td>Ajout d'un nouveau site ou gros changements</td>
+                    <td>Synchronisation ciblée</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>🔄 Workflow Recommandé</h2>
+
+        <div class="method-box">
+            <h3>📋 Processus standard</h3>
+            <ol>
+                <li><strong>Lundi matin</strong> : Administrateur exporte les données de la semaine précédente</li>
+                <li><strong>Lundi 9h</strong> : Upload du JSON sur SharePoint</li>
+                <li><strong>Lundi 9h30</strong> : Email à l'équipe : "Nouvelles données disponibles"</li>
+                <li><strong>Toute la semaine</strong> : Équipe travaille avec les données à jour</li>
+                <li><strong>Vendredi soir</strong> : Administrateur ajoute nouveaux coffrets (Admin)</li>
+                <li><strong>Répéter</strong> : Le lundi suivant</li>
+            </ol>
+        </div>
+
+        <h2>❓ FAQ - Questions Fréquentes</h2>
+
+        <div class="step">
+            <h3>Q1 : Que se passe-t-il si je n'importe pas les données ?</h3>
+            <p><strong>R :</strong> La version Lecture Seule affichera les anciennes données. Aucun risque de perte, mais l'équipe ne verra pas vos modifications.</p>
+        </div>
+
+        <div class="step">
+            <h3>Q2 : Puis-je perdre mes données ?</h3>
+            <p><strong>R :</strong> Si vous exportez régulièrement (fichier JSON), non. Le fichier JSON est votre sauvegarde complète.</p>
+        </div>
+
+        <div class="step">
+            <h3>Q3 : L'import écrase-t-il les données existantes ?</h3>
+            <p><strong>R :</strong> Oui, l'import remplace complètement les données. Exportez avant d'importer si vous voulez conserver l'ancien état.</p>
+        </div>
+
+        <div class="step">
+            <h3>Q4 : Puis-je avoir plusieurs versions Admin ?</h3>
+            <p><strong>R :</strong> Oui, mais attention : chaque Admin a son propre stockage local. Utilisez Export/Import pour synchroniser entre Admins.</p>
+        </div>
+
+        <div class="step">
+            <h3>Q5 : La synchronisation fonctionne-t-elle sur smartphone ?</h3>
+            <p><strong>R :</strong> Oui ! Export et Import fonctionnent aussi sur mobile (iOS et Android).</p>
+        </div>
+
+        <h2>💡 Bonnes Pratiques</h2>
+
+        <div class="tip">
+            <strong>✅ À FAIRE :</strong>
+            <ul>
+                <li>Exporter quotidiennement ou hebdomadairement (sauvegarde)</li>
+                <li>Nommer les fichiers avec la date (ex: 2026-02-08_coffrets.json)</li>
+                <li>Conserver les 3 dernières sauvegardes</li>
+                <li>Tester l'import sur votre propre carte Lecture Seule avant de partager</li>
+                <li>Informer l'équipe quand vous synchronisez</li>
+            </ul>
+        </div>
+
+        <div class="warning">
+            <strong>❌ À ÉVITER :</strong>
+            <ul>
+                <li>Ne jamais modifier manuellement le fichier JSON (risque de corruption)</li>
+                <li>Ne pas oublier d'exporter avant une réinstallation de Windows/navigateur</li>
+                <li>Ne pas partager le fichier carte_admin.html avec toute l'équipe (sécurité)</li>
+                <li>Ne pas importer un vieux JSON sans vérifier la date</li>
+            </ul>
+        </div>
+
+        <h2>🆘 En Cas de Problème</h2>
+
+        <div class="step">
+            <h3>Problème : "L'import ne fonctionne pas"</h3>
+            <p><strong>Solutions :</strong></p>
+            <ul>
+                <li>Vérifiez que le fichier a bien l'extension <code>.json</code></li>
+                <li>Vérifiez que le fichier n'est pas corrompu (ouvrez-le dans un éditeur de texte)</li>
+                <li>Essayez avec un autre navigateur</li>
+                <li>Videz le cache du navigateur (Ctrl+Shift+Suppr)</li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <h3>Problème : "J'ai perdu mes données"</h3>
+            <p><strong>Solutions :</strong></p>
+            <ul>
+                <li>Cherchez dans vos Téléchargements un ancien fichier JSON exporté</li>
+                <li>Vérifiez dans SharePoint si un JSON a été uploadé</li>
+                <li>Si vous avez utilisé un autre navigateur, ouvrez-le (les données sont peut-être là)</li>
+                <li>Contactez un membre de l'équipe qui a importé récemment (il peut ré-exporter)</li>
+            </ul>
+        </div>
+
+        <h2>📊 Récapitulatif</h2>
+
+        <div class="success">
+            <h3>✅ Synchronisation Simple en 4 étapes :</h3>
+            <ol style="font-size: 16px;">
+                <li><strong>Carte Admin</strong> → Clic sur <strong>💾 Exporter</strong></li>
+                <li><strong>Partager</strong> le fichier JSON avec l'équipe (SharePoint, email, etc.)</li>
+                <li><strong>Carte Lecture Seule</strong> → Clic sur <strong>📂 Importer</strong></li>
+                <li><strong>Sélectionner</strong> le fichier JSON → Terminé ! 🎉</li>
+            </ol>
+        </div>
+
+        <div style="margin-top: 40px; padding: 20px; background: #f8f9fa; border-radius: 10px; text-align: center;">
+            <p style="font-size: 14px; color: #666; margin: 0;">
+                📞 Pour toute question, contactez votre administrateur système<br>
+                Version de la notice : 1.0 - Février 2026
+            </p>
+        </div>
+    </div>
+</body>
+</html>

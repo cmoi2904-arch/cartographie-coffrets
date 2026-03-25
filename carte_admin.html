@@ -1,0 +1,2076 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cartographie des Coffrets Électriques - Système Hybride</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+        #map {
+            width: 100%;
+            height: 100vh;
+        }
+        
+        .search-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: white;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+        .search-panel.collapsed {
+            width: auto;
+        }
+        .search-panel.expanded {
+            width: 350px;
+            max-height: 42vh;
+            overflow-y: auto;
+        }
+        .search-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            background: #0984e3;
+            color: white;
+            border-radius: 5px 5px 0 0;
+            cursor: pointer;
+            user-select: none;
+        }
+        .search-panel-header h3 {
+            margin: 0;
+            font-size: 16px;
+            flex-grow: 1;
+        }
+        .toggle-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 0;
+            margin-left: 10px;
+            width: 25px;
+            height: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s ease;
+        }
+        .toggle-btn:hover {
+            background: rgba(255,255,255,0.2);
+            border-radius: 3px;
+        }
+        .search-panel.collapsed .toggle-btn {
+            transform: rotate(180deg);
+        }
+        .search-panel-content {
+            padding: 15px;
+            display: block;
+        }
+        .search-panel.collapsed .search-panel-content {
+            display: none;
+        }
+        .search-input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+        }
+        .search-input:focus {
+            outline: none;
+            border-color: #0984e3;
+        }
+        .search-results {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .search-result-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .search-result-item:hover {
+            background: #f0f0f0;
+        }
+        .search-result-item strong {
+            color: #d63031;
+            display: block;
+            margin-bottom: 3px;
+        }
+        .search-result-item small {
+            color: #666;
+            font-size: 11px;
+        }
+        .result-badge {
+            display: inline-block;
+            background: #0984e3;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            margin-left: 5px;
+        }
+        .no-results {
+            text-align: center;
+            padding: 20px;
+            color: #999;
+        }
+
+        .installation-dropdown {
+            margin-bottom: 10px;
+        }
+        .installation-dropdown-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 10px;
+            background: #74b9ff;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            user-select: none;
+        }
+        .installation-dropdown-header:hover {
+            background: #0984e3;
+        }
+        .installation-dropdown-toggle {
+            font-size: 14px;
+            transition: transform 0.3s;
+        }
+        .installation-dropdown.collapsed .installation-dropdown-toggle {
+            transform: rotate(-90deg);
+        }
+        .installation-dropdown-content {
+            display: block;
+            padding: 10px 0;
+        }
+        .installation-dropdown.collapsed .installation-dropdown-content {
+            display: none;
+        }
+        .installation-select {
+            width: 100%;
+            padding: 8px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 13px;
+            box-sizing: border-box;
+            background: white;
+        }
+        .installation-select:focus {
+            outline: none;
+            border-color: #0984e3;
+        }
+        .installation-count {
+            font-size: 10px;
+            background: rgba(255,255,255,0.3);
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+        .filter-tags {
+            margin-bottom: 10px;
+        }
+        .filter-tag {
+            display: inline-block;
+            background: #74b9ff;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            margin-right: 5px;
+            margin-bottom: 5px;
+            cursor: pointer;
+        }
+        .filter-tag:hover {
+            background: #0984e3;
+        }
+        
+        .info-panel {
+            position: absolute;
+            left: 10px;
+            bottom: 140px;
+            transform: none;
+            background: white;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+        .info-panel.collapsed {
+            height: auto;
+        }
+        .info-panel.expanded {
+            width: auto;
+        }
+        .info-panel-header {
+            display: flex;
+            align-items: center;
+            padding: 10px 15px;
+            background: #00b894;
+            color: white;
+            cursor: pointer;
+            user-select: none;
+            border-radius: 5px;
+        }
+        .info-panel.expanded .info-panel-header {
+            border-radius: 5px 0 0 5px;
+        }
+        .info-panel-header h3 {
+            margin: 0;
+            font-size: 14px;
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+        }
+        .info-panel.expanded .info-panel-header h3 {
+            writing-mode: horizontal-tb;
+        }
+        .info-panel-header .toggle-btn {
+            margin-left: 0;
+        }
+        .info-panel.collapsed .info-panel-header {
+            flex-direction: column;
+        }
+        .info-panel.expanded .info-panel-header {
+            flex-direction: row;
+            justify-content: space-between;
+        }
+        .info-panel-content {
+            padding: 15px;
+            display: none;
+            min-width: 220px;
+        }
+        .info-panel.expanded .info-panel-content {
+            display: block;
+        }
+        .info-panel.collapsed .toggle-btn {
+            transform: rotate(0deg);
+            margin-top: 10px;
+        }
+        .info-panel.expanded .toggle-btn {
+            transform: rotate(180deg);
+        }
+        
+        .export-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 10px;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .btn-export {
+            background: #00b894;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        .btn-export:hover {
+            background: #00966d;
+        }
+        
+        .add-marker-modal {
+            display: none;
+            position: fixed;
+            z-index: 10001;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            align-items: center;
+            justify-content: center;
+        }
+        .add-marker-modal.active {
+            display: flex;
+        }
+        .modal-content {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .modal-header h2 {
+            margin: 0;
+            color: #333;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            color: #666;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+        }
+        .modal-close:hover {
+            color: #d63031;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #0984e3;
+        }
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .btn-save {
+            flex: 1;
+            background: #00b894;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .btn-save:hover {
+            background: #00966d;
+        }
+        .btn-cancel {
+            flex: 1;
+            background: #dfe6e9;
+            color: #2d3436;
+            border: none;
+            padding: 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .btn-cancel:hover {
+            background: #b2bec3;
+        }
+        .coords-display {
+            background: #f0f0f0;
+            padding: 8px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .popup-content {
+            font-size: 11px;
+            min-width: 256px;
+        }
+        .popup-content strong {
+            color: #d63031;
+        }
+        .popup-content div {
+            margin: 3px 0;
+        }
+        .photos-container {
+            margin: 8px 0;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+        }
+        .photo-slot {
+            position: relative;
+            aspect-ratio: 1;
+            border: 2px dashed #ddd;
+            border-radius: 5px;
+            overflow: hidden;
+            background: #f9f9f9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .photo-slot img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            cursor: pointer;
+        }
+        .photo-slot-empty {
+            color: #999;
+            font-size: 11px;
+            text-align: center;
+            padding: 5px;
+        }
+        .photo-upload-btn {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            background: #0984e3;
+            color: white;
+            border: none;
+            padding: 3px 6px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 10px;
+        }
+        .photo-remove-btn {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: #d63031;
+            color: white;
+            border: none;
+            padding: 3px 6px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 10px;
+        }
+        .photo-upload-btn:hover {
+            background: #0770c4;
+        }
+        .photo-remove-btn:hover {
+            background: #b71c1c;
+        }
+        .photo-hd-icon {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            background: rgba(0, 184, 148, 0.9);
+            color: white;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-size: 9px;
+            font-weight: bold;
+        }
+        .photo-link-input {
+            width: 100%;
+            padding: 5px;
+            font-size: 11px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            margin-top: 3px;
+            box-sizing: border-box;
+        }
+        
+        .pdf-container {
+            margin: 8px 0;
+            padding: 10px;
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 5px;
+        }
+        .pdf-link-display {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+            margin-bottom: 8px;
+        }
+        .pdf-icon {
+            font-size: 32px;
+        }
+        .pdf-link-text {
+            flex: 1;
+            font-size: 12px;
+            color: #0984e3;
+            word-break: break-all;
+            text-decoration: underline;
+        }
+        .pdf-actions {
+            display: flex;
+            gap: 5px;
+        }
+        .btn-open-pdf {
+            background: #0984e3;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+            flex: 1;
+        }
+        .btn-open-pdf:hover {
+            background: #0770c4;
+        }
+        .btn-edit-pdf {
+            background: #ffc107;
+            color: #333;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+            flex: 1;
+        }
+        .btn-edit-pdf:hover {
+            background: #ffb300;
+        }
+        .btn-remove-pdf {
+            background: #d63031;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        .btn-remove-pdf:hover {
+            background: #b71c1c;
+        }
+        .pdf-input-zone {
+            padding: 10px;
+        }
+        .pdf-input {
+            width: 100%;
+            padding: 8px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 12px;
+            box-sizing: border-box;
+            margin-bottom: 8px;
+        }
+        .pdf-input:focus {
+            outline: none;
+            border-color: #ffc107;
+        }
+        .btn-save-pdf {
+            width: 100%;
+            background: #00b894;
+            color: white;
+            border: none;
+            padding: 8px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .btn-save-pdf:hover {
+            background: #00966d;
+        }
+        .pdf-no-link {
+            text-align: center;
+            padding: 15px;
+            color: #666;
+        }
+        
+        .marker-with-photo {
+            filter: drop-shadow(0 0 5px #00b894);
+        }
+        .photo-modal {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            align-items: center;
+            justify-content: center;
+        }
+        .photo-modal.active {
+            display: flex;
+        }
+        .photo-modal img {
+            max-width: 90%;
+            max-height: 90%;
+            border-radius: 5px;
+        }
+        .photo-modal-close {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: white;
+            font-size: 40px;
+            cursor: pointer;
+        }
+        .longpress-indicator {
+            position: fixed;
+            background: rgba(0, 184, 148, 0.9);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 14px;
+            z-index: 9999;
+            pointer-events: none;
+            display: none;
+        }
+        .btn-delete {
+            background: #d63031;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 10px;
+            margin-top: 8px;
+        }
+        .btn-delete:hover {
+            background: #b71c1c;
+        }
+        .loading-indicator {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 184, 148, 0.95);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 8px;
+            font-size: 16px;
+            z-index: 10002;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+        .loading-indicator.active {
+            display: block;
+        }
+        .storage-info {
+            background: #e8f5e9;
+            border: 2px solid #4caf50;
+            border-radius: 5px;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 11px;
+            color: #2d3436;
+        }
+        .storage-bar {
+            width: 100%;
+            height: 8px;
+            background: #ddd;
+            border-radius: 4px;
+            margin: 5px 0;
+            overflow: hidden;
+        }
+        .storage-bar-fill {
+            height: 100%;
+            background: #4caf50;
+            transition: width 0.3s, background 0.3s;
+        }
+        .storage-bar-fill.warning {
+            background: #ff9800;
+        }
+        .storage-bar-fill.danger {
+            background: #f44336;
+        }
+        .helper-text {
+            font-size: 10px;
+            color: #666;
+            margin-top: 3px;
+        }
+        
+        /* Fenêtre de stockage */
+        .storage-modal {
+            display: none;
+            position: fixed;
+            z-index: 10003;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+        }
+        .storage-modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .storage-box {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        .storage-header {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .storage-info-box {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            font-size: 14px;
+        }
+        .storage-bar-container {
+            background: #ddd;
+            height: 30px;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+        .storage-bar-fill-modal {
+            height: 100%;
+            background: linear-gradient(90deg, #00b894, #55efc4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .storage-bar-fill-modal.danger {
+            background: linear-gradient(90deg, #d63031, #ff7675);
+        }
+        .storage-bar-fill-modal.warning {
+            background: linear-gradient(90deg, #fdcb6e, #ffeaa7);
+            color: #333;
+        }
+        .storage-btn {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .btn-clean-storage {
+            background: #00b894;
+            color: white;
+        }
+        .btn-clean-storage:hover {
+            background: #00966d;
+        }
+        .btn-clear-all {
+            background: #d63031;
+            color: white;
+        }
+        .btn-clear-all:hover {
+            background: #b71c1c;
+        }
+        .btn-close-storage {
+            background: #dfe6e9;
+            color: #2d3436;
+        }
+        .btn-close-storage:hover {
+            background: #b2bec3;
+        }
+        .hybrid-badge {
+            display: inline-block;
+            background: #6c5ce7;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 9px;
+            font-weight: bold;
+            margin-left: 5px;
+        }
+    
+        /* Écran de connexion */
+        .auth-overlay {
+            display: flex;
+            position: fixed;
+            z-index: 100000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            align-items: center;
+            justify-content: center;
+        }
+        .auth-overlay.hidden {
+            display: none;
+        }
+        .auth-box {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+        }
+        .auth-logo {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+        .auth-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .auth-subtitle {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .auth-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+            margin-bottom: 20px;
+        }
+        .auth-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .auth-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .auth-btn:hover {
+            opacity: 0.9;
+        }
+        .auth-error {
+            display: none;
+            background: #ffebee;
+            color: #c62828;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+        .auth-error.visible {
+            display: block;
+        }
+        .logout-btn {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(214, 48, 49, 0.9);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            z-index: 1001;
+            font-weight: bold;
+        }
+        .logout-btn:hover {
+            background: rgba(183, 28, 28, 1);
+        }
+        .admin-badge {
+            position: absolute;
+            top: 10px;
+            right: 120px;
+            background: rgba(102, 126, 234, 0.9);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 1001;
+            font-weight: bold;
+        }
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
+</head>
+<body>
+    
+    <!-- Écran d'authentification -->
+    <div id="auth-overlay" class="auth-overlay">
+        <div class="auth-box">
+            <div class="auth-logo">🔐</div>
+            <div class="auth-title">Mode Administrateur</div>
+            <div class="auth-subtitle">Cartographie des Coffrets Électriques</div>
+            <div id="auth-error" class="auth-error">Mot de passe incorrect</div>
+            <form onsubmit="authenticate(event)">
+                <input type="password" 
+                       id="password-input" 
+                       class="auth-input" 
+                       placeholder="Mot de passe" 
+                       autocomplete="current-password"
+                       required>
+                <button type="submit" class="auth-btn">🔓 Se connecter</button>
+            </form>
+            <div style="margin-top: 20px; font-size: 12px; color: #999;">
+                Version Admin - Édition complète
+            </div>
+        </div>
+    </div>
+    
+    <div id="admin-badge" class="admin-badge" style="display: none;">👤 Admin</div>
+    <button id="logout-btn" class="logout-btn" style="display: none;" onclick="logout()">🚪 Déconnexion</button>
+
+    <div id="map"></div>
+    
+    <div class="loading-indicator" id="loading-indicator">
+        <div id="loading-text">⏳ Chargement...</div>
+        <div style="font-size: 12px; margin-top: 5px;" id="loading-subtext"></div>
+    </div>
+    
+    <div class="longpress-indicator" id="longpress-indicator">
+        📍 Maintenez pour ajouter un coffret...
+    </div>
+    
+    <div class="search-panel expanded" id="search-panel">
+        <div class="search-panel-header" onclick="toggleSearchPanel()">
+            <h3>🔍 Rechercher <span class="hybrid-badge">HYBRIDE</span></h3>
+            <button class="toggle-btn">◀</button>
+        </div>
+        <div class="search-panel-content">
+            <input type="text" 
+                   class="search-input" 
+                   id="search-input" 
+                   placeholder="Rechercher par installation, implantation ou désignation..."
+                   onkeyup="performSearch()">
+            <div class="installation-dropdown" id="installation-dropdown">
+                <div class="installation-dropdown-header" onclick="toggleInstallationDropdown()">
+                    <span>🏢 Filtrer par installation <span class="installation-count">29</span></span>
+                    <span class="installation-dropdown-toggle">▼</span>
+                </div>
+                <div class="installation-dropdown-content">
+                    <select class="installation-select" id="installation-select" onchange="filterByInstallation()">
+                        <option value="">-- Toutes les installations --</option>
+                    <option value="ARENC">ARENC</option>
+                    <option value="ATELIER ELEC">ATELIER ELEC</option>
+                    <option value="ATELIER MECA">ATELIER MECA</option>
+                    <option value="CENTRE AUTO">CENTRE AUTO</option>
+                    <option value="CHANTERAC">CHANTERAC</option>
+                    <option value="GALERIE M2">GALERIE M2</option>
+                    <option value="GARE MARITIME 95">GARE MARITIME 95</option>
+                    <option value="GARE MARITIME ARENC">GARE MARITIME ARENC</option>
+                    <option value="GARE MARITIME CAP JANET">GARE MARITIME CAP JANET</option>
+                    <option value="GARE MARITIME T2">GARE MARITIME T2</option>
+                    <option value="H 16">H 16</option>
+                    <option value="H 18">H 18</option>
+                    <option value="H19">H19</option>
+                    <option value="J0">J0</option>
+                    <option value="J4">J4</option>
+                    <option value="PIF">PIF</option>
+                    <option value="SILO">SILO</option>
+                    <option value="TDP  ">TDP  </option>
+                    <option value="TERMINAL 162">TERMINAL 162</option>
+                    <option value="TERMINAL 163">TERMINAL 163</option>
+                    <option value="TERMINAL 186">TERMINAL 186</option>
+                    <option value="TERMINAL 187">TERMINAL 187</option>
+                    <option value="TERMINAL 188">TERMINAL 188</option>
+                    <option value="TERMINAL 189">TERMINAL 189</option>
+                    <option value="TERMINAL A">TERMINAL A</option>
+                    <option value="TERRE PLEIN 86">TERRE PLEIN 86</option>
+                    <option value="TERRE PLEIN 93">TERRE PLEIN 93</option>
+                    <option value="TP CAP JANET DEBARQUEMENT">TP CAP JANET DEBARQUEMENT</option>
+                    <option value="TP CAP JANET EMBARQUEMENT">TP CAP JANET EMBARQUEMENT</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="search-results" id="search-results">
+                <div class="no-results">Tapez pour rechercher...</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="info-panel collapsed" id="info-panel">
+        <div class="info-panel-header" onclick="toggleInfoPanel()">
+            <h3>⚡ Coffrets</h3>
+            <button class="toggle-btn">▶</button>
+        </div>
+        <div class="info-panel-content">
+            <p><strong>Total:</strong> <span id="total-number">312</span> coffrets</p>
+            <p><strong>Avec photos:</strong> <span id="photo-number">0</span></p>
+            <p><strong>Avec PDF:</strong> <span id="pdf-number">0</span></p>
+            <p style="font-size: 11px; color: #666;">📍 Appui long pour ajouter</p>
+            <div class="storage-info">
+                <div style="font-weight: bold; margin-bottom: 5px;">💾 Stockage hybride:</div>
+                <div class="storage-bar">
+                    <div class="storage-bar-fill" id="storage-bar" style="width: 0%"></div>
+                </div>
+                <div style="font-size: 10px; margin-top: 3px;">
+                    <span id="storage-text">0 / 1000 miniatures</span>
+                </div>
+                <div style="font-size: 10px; color: #666; margin-top: 5px;">
+                    🖼️ Mini (5KB) + 🔗 HD (Drive)
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="export-panel">
+        <button class="btn-export" onclick="exportData()">💾 Exporter</button>
+        <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+        <button class="btn-export" onclick="document.getElementById('import-file').click()">📂 Importer</button>
+        <button class="btn-export" onclick="openStorageWindow()">⚙️ Stockage</button>
+    </div>
+    
+    <div id="add-marker-modal" class="add-marker-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>➕ Nouveau coffret</h2>
+                <button class="modal-close" onclick="closeAddMarkerModal()">&times;</button>
+            </div>
+            <form id="add-marker-form">
+                <div class="form-group">
+                    <label>📍 Coordonnées GPS</label>
+                    <div class="coords-display" id="new-coords"></div>
+                </div>
+                <div class="form-group">
+                    <label>🔌 Désignation *</label>
+                    <input type="text" id="new-designation" required placeholder="Ex: TGBT 400V">
+                </div>
+                <div class="form-group">
+                    <label>🏷️ MPSCA</label>
+                    <input type="text" id="new-mpsca" placeholder="Ex: MPSCA-001">
+                </div>
+                <div class="form-group">
+                    <label>⚙️ Type de matériel</label>
+                    <select id="new-type">
+                        <option value="">-- Sélectionner --</option>
+                        <option value="TGBT">TGBT</option>
+                        <option value="TD">TD (Tableau Divisionnaire)</option>
+                        <option value="COFFRET">COFFRET</option>
+                        <option value="ARMOIRE">ARMOIRE</option>
+                        <option value="Autre">Autre</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>🏢 Installation *</label>
+                    <select id="new-installation" required>
+                        <option value="">-- Sélectionner --</option>
+                        <option value="ARENC">ARENC</option>
+<option value="ATELIER ELEC">ATELIER ELEC</option>
+<option value="ATELIER MECA">ATELIER MECA</option>
+<option value="CENTRE AUTO">CENTRE AUTO</option>
+<option value="CHANTERAC">CHANTERAC</option>
+<option value="GALERIE M2">GALERIE M2</option>
+<option value="GARE MARITIME 95">GARE MARITIME 95</option>
+<option value="GARE MARITIME ARENC">GARE MARITIME ARENC</option>
+<option value="GARE MARITIME CAP JANET">GARE MARITIME CAP JANET</option>
+<option value="GARE MARITIME T2">GARE MARITIME T2</option>
+<option value="H 16">H 16</option>
+<option value="H 18">H 18</option>
+<option value="H19">H19</option>
+<option value="J0">J0</option>
+<option value="J4">J4</option>
+<option value="PIF">PIF</option>
+<option value="SILO">SILO</option>
+<option value="TDP  ">TDP  </option>
+<option value="TERMINAL 162">TERMINAL 162</option>
+<option value="TERMINAL 163">TERMINAL 163</option>
+<option value="TERMINAL 186">TERMINAL 186</option>
+<option value="TERMINAL 187">TERMINAL 187</option>
+<option value="TERMINAL 188">TERMINAL 188</option>
+<option value="TERMINAL 189">TERMINAL 189</option>
+<option value="TERMINAL A">TERMINAL A</option>
+<option value="TERRE PLEIN 86">TERRE PLEIN 86</option>
+<option value="TERRE PLEIN 93">TERRE PLEIN 93</option>
+<option value="TP CAP JANET DEBARQUEMENT">TP CAP JANET DEBARQUEMENT</option>
+<option value="TP CAP JANET EMBARQUEMENT">TP CAP JANET EMBARQUEMENT</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>📍 Implantation</label>
+                    <input type="text" id="new-implantation" placeholder="Ex: RDC/LOCAL TECHNIQUE">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" onclick="closeAddMarkerModal()">Annuler</button>
+                    <button type="submit" class="btn-save">✅ Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div id="photo-modal" class="photo-modal" onclick="closePhotoModal()">
+        <span class="photo-modal-close">&times;</span>
+        <img id="modal-photo" src="" alt="Photo agrandie">
+    </div>
+
+    <!-- Fenêtre de gestion du stockage -->
+    <div id="storage-modal" class="storage-modal" onclick="if(event.target.id==='storage-modal')closeStorageWindow()">
+        <div class="storage-box">
+            <div class="storage-header">💾 Gestion du Stockage Hybride</div>
+            
+            <div class="storage-info-box">
+                <div style="margin-bottom: 10px;">
+                    <strong>Miniatures :</strong> <span id="space-used">0 MB</span> / 5 MB
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <strong>Photos stockées :</strong> <span id="photos-stored">0</span> / 1000
+                </div>
+                <div style="font-size: 12px; color: #666;">
+                    🖼️ Miniatures (5KB) en local + 🔗 HD (4MB) sur Drive
+                </div>
+            </div>
+            
+            <div class="storage-bar-container">
+                <div id="storage-bar-fill" class="storage-bar-fill-modal" style="width: 0%">0%</div>
+            </div>
+            
+            <button class="storage-btn btn-clean-storage" onclick="cleanOldData()">
+                🧹 Nettoyer anciennes versions
+            </button>
+            
+            <button class="storage-btn btn-clear-all" onclick="clearAllData()">
+                🗑️ Tout effacer (ATTENTION)
+            </button>
+            
+            <button class="storage-btn btn-close-storage" onclick="closeStorageWindow()">
+                ✖️ Fermer
+            </button>
+            
+            <div style="margin-top: 15px; padding: 10px; background: #e3f2fd; border-radius: 5px; font-size: 12px;">
+                💡 <strong>Système hybride :</strong> Les miniatures (5KB) sont stockées localement pour un affichage rapide. Les photos haute résolution (4MB) sont sur Google Drive via des liens.
+            </div>
+        </div>
+    </div>
+
+    <script>
+
+        // Authentification
+        const PASSWORD_HASH = '0e89f223e226ae63268cf39152ab75722e811b89d29efb22a852f1667bd22ae0'; // SHA-256 du mot de passe
+        
+        async function hashPassword(password) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(password);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+        
+        async function authenticate(event) {
+            event.preventDefault();
+            const passwordInput = document.getElementById('password-input');
+            const password = passwordInput.value;
+            
+            const hash = await hashPassword(password);
+            
+            if (hash === PASSWORD_HASH) {
+                // Authentification réussie
+                sessionStorage.setItem('authenticated', 'true');
+                document.getElementById('auth-overlay').classList.add('hidden');
+                document.getElementById('admin-badge').style.display = 'block';
+                document.getElementById('logout-btn').style.display = 'block';
+                passwordInput.value = '';
+                document.getElementById('auth-error').classList.remove('visible');
+            } else {
+                // Mot de passe incorrect
+                document.getElementById('auth-error').classList.add('visible');
+                passwordInput.value = '';
+                passwordInput.focus();
+            }
+        }
+        
+        function logout() {
+            if (confirm('Voulez-vous vraiment vous déconnecter?')) {
+                sessionStorage.removeItem('authenticated');
+                location.reload();
+            }
+        }
+        
+        function checkAuth() {
+            const isAuth = sessionStorage.getItem('authenticated') === 'true';
+            if (isAuth) {
+                document.getElementById('auth-overlay').classList.add('hidden');
+                document.getElementById('admin-badge').style.display = 'block';
+                document.getElementById('logout-btn').style.display = 'block';
+            }
+        }
+        
+        // Vérifier l'authentification au chargement
+        checkAuth();
+        
+
+        let markersData = [{"id": 0, "lat": 43.344799, "lon": 5.3303993, "designation": "TGBT 400V", "mpsca": "GM/MPCC/SE/8/G/400", "type": "ARMOIRE METALLIQUE", "installation": "TERMINAL A", "implantation": "RDC/TGBT", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 1, "lat": 43.3448147, "lon": 5.3304114, "designation": "TGBT 400V", "mpsca": "GM/MPCC/SE/9/G/400", "type": "ARMOIRE METALLIQUE", "installation": "TERMINAL A", "implantation": "RDC/TGBT", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 2, "lat": 43.344832, "lon": 5.330384, "designation": "TGBT 230V", "mpsca": "GM/MPCC/SE/1/G/230", "type": "ARMOIRE METALLIQUE", "installation": "TERMINAL A", "implantation": "RDC/TGBT", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 3, "lat": 43.3448154, "lon": 5.3303679, "designation": "TGBT 230V", "mpsca": "GM/MPCC/SE/2/G/230", "type": "ARMOIRE METALLIQUE", "installation": "TERMINAL A", "implantation": "RDC/TGBT", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 4, "lat": 43.3447816, "lon": 5.3303692, "designation": "COFFRET TRANSFO", "mpsca": "GM/MPCC/SE/10/G/400", "type": "COFFRET", "installation": "TERMINAL A", "implantation": "RDC/TGBT", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 5, "lat": 43.3448008, "lon": 5.3303395, "designation": "COFFRET GTB (1)", "mpsca": "GM/MPCC/SE/6/GTC/230", "type": "COFFRET METALLIQUE", "installation": "TERMINAL A", "implantation": "RDC/TGBT", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 6, "lat": 43.3445338, "lon": 5.3301333, "designation": "TD CLIM", "mpsca": "GM/MPCC/S/20/G/400", "type": "ARMOIRE METALLIQUE", "installation": "TERMINAL A", "implantation": "RDC/LOCAL CLIM", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 7, "lat": 43.3445893, "lon": 5.3301893, "designation": "TD 02", "mpsca": "GM/MPCC/S/21/D/230", "type": "COFFRET METALLIQUE", "installation": "TERMINAL A", "implantation": "RDC/LOCAL CFA", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 8, "lat": 43.3446059, "lon": 5.3302131, "designation": "COFFRET METEO", "mpsca": "GM/MPCC/S/22/D/230", "type": "COFFRET", "installation": "TERMINAL A", "implantation": "RDC/LOCAL CFA", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 9, "lat": 43.3446234, "lon": 5.3302369, "designation": "COFFRET API SSI", "mpsca": "GM/MPCC/S/23/D/230", "type": "COFFRET", "installation": "TERMINAL A", "implantation": "RDC/LOCAL CFA", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 10, "lat": 43.344824, "lon": 5.3303084, "designation": "TD 01", "mpsca": "GM/MPCC/SE/11/D/230", "type": "ARMOIRE METALLIQUE", "installation": "TERMINAL A", "implantation": "RDC/BAGAGERIE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 11, "lat": 43.3448044, "lon": 5.3302883, "designation": "TD 01", "mpsca": "GM/MPCC/SE/12/D/230", "type": "ARMOIRE METALLIQUE", "installation": "TERMINAL A", "implantation": "RDC/BAGAGERIE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 12, "lat": 43.3447857, "lon": 5.3302652, "designation": "TD PASSERELLE", "mpsca": "GM/MPCC/SE/13/D/230", "type": "COFFRET METALLIQUE", "installation": "TERMINAL A", "implantation": "RDC/BAGAGERIE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 13, "lat": 43.3449442, "lon": 5.3299109, "designation": "TD 11", "mpsca": "GM/MPCC/NE/15/D/230", "type": "ARMOIRE METALLIQUE", "installation": "TERMINAL A", "implantation": "RDC/BAGAGERIE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 14, "lat": 43.3449627, "lon": 5.3299377, "designation": "CR EST", "mpsca": "GM/MPCC/NE/16/R/230", "type": "COFFRET METALLIQUE", "installation": "TERMINAL A", "implantation": "RDC/BAGAGERIE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 15, "lat": 43.344535, "lon": 5.329504, "designation": "CR OUEST", "mpsca": "GM/MPCC/NE/18/R/230", "type": "COFFRET METALLIQUE", "installation": "TERMINAL A", "implantation": "RDC/BAGAGERIE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 16, "lat": 43.344558, "lon": 5.330077, "designation": "SERVITUDE", "mpsca": "GM/MPCC/S/17/SER/400", "type": "COFFRET METALLIQUE", "installation": "TERMINAL A", "implantation": "RDC/BAGAGERIE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 17, "lat": 43.344393, "lon": 5.329643, "designation": "TT 01", "mpsca": "GM/MPCC/N19/D/230", "type": "COFFRET ETANCHE", "installation": "TERMINAL A", "implantation": "RDC/SCANNER", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 18, "lat": 43.344337, "lon": 5.329765, "designation": "TT 02", "mpsca": "NON REPERTORIE", "type": "COFFRET ETANCHE", "installation": "TERMINAL A", "implantation": "RDC/SCANNER", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 19, "lat": 43.344319, "lon": 5.3298, "designation": "TT 03", "mpsca": "NON REPERTORIE", "type": "COFFRET ETANCHE", "installation": "TERMINAL A", "implantation": "RDC/SCANNER", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 20, "lat": 43.344301, "lon": 5.329834, "designation": "TT 04", "mpsca": "NON REPERTORIE", "type": "COFFRET ETANCHE", "installation": "TERMINAL A", "implantation": "RDC/SCANNER", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 21, "lat": 43.34491, "lon": 5.330055, "designation": "TT 05", "mpsca": "NON REPERTORIE", "type": "COFFRET ETANCHE", "installation": "TERMINAL A", "implantation": "RDC/SCANNER", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 22, "lat": 43.344501, "lon": 5.32937, "designation": "TT 06", "mpsca": "NON REPERTORIE", "type": "COFFRET ETANCHE", "installation": "TERMINAL A", "implantation": "RDC/SCANNER", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 23, "lat": 43.3446584, "lon": 5.3296745, "designation": "TD21", "mpsca": "GM/MPCC/SO/31/0/230", "type": "ARMOIRE METALLIQUE", "installation": "TERMINAL A", "implantation": "R+1/COULOIR CDG", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 24, "lat": 43.3446362, "lon": 5.329645, "designation": "GTB", "mpsca": "GM/MPCC/SO/32/GTC/230", "type": "ARMOIRE METALLIQUE", "installation": "TERMINAL A", "implantation": "R+1/COULOIR CDG", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 25, "lat": 43.3446254, "lon": 5.3296263, "designation": "GTB", "mpsca": "GM/MPCC/SO/33/GTC/230", "type": "ARMOIRE METALLIQUE", "installation": "TERMINAL A", "implantation": "R+1/COULOIR CDG", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 26, "lat": 43.344601, "lon": 5.329715, "designation": "TD25", "mpsca": "GM/MPCC/SO/29/D/230", "type": "COFFRET METALLIQUE", "installation": "TERMINAL A", "implantation": "R+1/BUREAU CDG", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 27, "lat": 43.34474, "lon": 5.329786, "designation": "TD26", "mpsca": "GM/MPCC/SO/34/D/230", "type": "TABLEAU", "installation": "TERMINAL A", "implantation": "R+1/LOCAL BAR", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 28, "lat": 43.3447537, "lon": 5.3298058, "designation": "TD BAR", "mpsca": "GM/MPCC/SO/35/D/230", "type": "TABLEAU", "installation": "TERMINAL A", "implantation": "R+1/LOCAL BAR", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 29, "lat": 43.34483, "lon": 5.329821, "designation": "TT SEAMENS ", "mpsca": "GM/MPCC/SO/36/D/230", "type": "TABLEAU", "installation": "TERMINAL A", "implantation": "R+1/LOCAL SEAMENS", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 30, "lat": 43.3446398, "lon": 5.3301737, "designation": "TD22", "mpsca": "GM/MPCC/NE/24/D/230", "type": "COFFRET METALLIQUE", "installation": "TERMINAL A", "implantation": "R+1/GUICHETS H", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 31, "lat": 43.3445018, "lon": 5.3300273, "designation": "TD23", "mpsca": "GM/MPCC/SO/27/D/230", "type": "COFFRET METALLIQUE", "installation": "TERMINAL A", "implantation": "R+1/GUICHET I", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 32, "lat": 43.3444729, "lon": 5.3299923, "designation": "TD24", "mpsca": "GM/MPCC/SO/28/D/230", "type": "COFFRET METALLIQUE", "installation": "TERMINAL A", "implantation": "R+1/GUICHET D", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 33, "lat": 43.3446119, "lon": 5.3301403, "designation": "SERVITUDE R+1", "mpsca": "GM/MPCC/NE/25/SER/400", "type": "COFFRET METALLIQUE", "installation": "TERMINAL A", "implantation": "R+1/GUICHET E", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 34, "lat": 43.344903, "lon": 5.328712, "designation": "TD CROCS", "mpsca": "NON REPERTORIE", "type": "ARMOIRE FIBROCIMENT", "installation": "TERMINAL A", "implantation": "EXTERIEUR/QUAI 181", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 35, "lat": 43.344192, "lon": 5.3330103, "designation": "DISJONCTEUR GENERAL", "mpsca": "GM/163/N/6/G/230", "type": "COFFRET METALLIQUE", "installation": "TERMINAL 163", "implantation": "LOCAL TECHNIQUE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 36, "lat": 43.3442164, "lon": 5.3330063, "designation": "TD 01", "mpsca": "GM/163/N/0/G/230", "type": "COFFRET METALLIQUE", "installation": "TERMINAL 163", "implantation": "LOCAL TECHNIQUE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 37, "lat": 43.3441899, "lon": 5.3330451, "designation": "TD 03", "mpsca": "GM/163/N/1/D/230", "type": "COFFRET METALLIQUE", "installation": "TERMINAL 163", "implantation": "LOCAL TECHNIQUE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 38, "lat": 43.3442159, "lon": 5.3330471, "designation": "CHASSIS AUTOMATE", "mpsca": "GM/163/N/2/D/230", "type": "CHASSIS", "installation": "TERMINAL 163", "implantation": "LOCAL TECHNIQUE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 39, "lat": 43.3442121, "lon": 5.3330972, "designation": "TT 01", "mpsca": "GM/163/NE/4/D/230", "type": "COFFRET METALLIQUE", "installation": "TERMINAL 163", "implantation": "SALLE D'ATTENTE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 40, "lat": 43.343547, "lon": 5.333953, "designation": "TT WC", "mpsca": "WC/163/O/5/G/230", "type": "COFFRET METALLIQUE", "installation": "TERMINAL 163", "implantation": "WC EXTERIEUR", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 41, "lat": 43.3426197, "lon": 5.3363968, "designation": "TGBT", "mpsca": "GM/162/O/0/D/230", "type": "COFFRET METALLIQUE", "installation": "TERMINAL 162", "implantation": "LOCAL TECHNIQUE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 42, "lat": 43.3426217, "lon": 5.3363261, "designation": "TD 01", "mpsca": "GM/162/O/1/D/230", "type": "COFFRET ETANCHE", "installation": "TERMINAL 162", "implantation": "LOCAL TECHNIQUE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 43, "lat": 43.3426216, "lon": 5.3363633, "designation": "CE BG (bornier g\u00e9n\u00e9ral)", "mpsca": "GM/162/O/3/R/230", "type": "COFFRET", "installation": "TERMINAL 162", "implantation": "LOCAL TECHNIQUE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 44, "lat": 43.3425942, "lon": 5.3364066, "designation": "CE GG (g\u00e9n\u00e9ral gare)", "mpsca": "GM/162/O/2/G/230", "type": "COFRET", "installation": "TERMINAL 162", "implantation": "LOCAL TECHNIQUE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 45, "lat": 43.3425951, "lon": 5.3363647, "designation": "TT 01 (scan)", "mpsca": "NON REPERTORIE", "type": "COFFRET ETANCHE", "installation": "TERMINAL 162", "implantation": "LOCAL TECHNIQUE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 46, "lat": 43.342596, "lon": 5.3363214, "designation": "TT 02 (scan)", "mpsca": "NON REPERTORIE", "type": "COFFRET ETANCHE", "installation": "TERMINAL 162", "implantation": "LOCAL TECHNIQUE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 47, "lat": 43.3425706, "lon": 5.3363653, "designation": "TT 03 (scan)", "mpsca": "NON REPERTORIE", "type": "COFFRET ETANCHE", "installation": "TERMINAL 162", "implantation": "LOCAL TECHNIQUE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 48, "lat": 43.342607, "lon": 5.336607, "designation": "TD 02", "mpsca": "GM/162/E/4/D/230", "type": "TABLEAU", "installation": "TERMINAL 162", "implantation": "SALLE CONTROLE SCANNER", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 49, "lat": 43.3398195, "lon": 5.3387845, "designation": "TGBT", "mpsca": "WC/186/NO/0/G/230", "type": "COFFRET METALLIQUE", "installation": "TERMINAL 186", "implantation": "LOCAL TECHNIQUE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 50, "lat": 43.3398195, "lon": 5.338751, "designation": "TD BAR", "mpsca": "GM/186/NO/2/D/230", "type": "TABLEAU", "installation": "TERMINAL 186", "implantation": "LOCAL TECHNIQUE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 51, "lat": 43.339797, "lon": 5.3387885, "designation": "TD SCANNERS", "mpsca": "WC/186/NO/1/D/230", "type": "COFFRET METALLIQUE", "installation": "TERMINAL 186", "implantation": "LOCAL TECHNIQUE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 52, "lat": 43.339797, "lon": 5.3387537, "designation": "COFFRET CONTROLE ACCES", "mpsca": "GM/186/NO/3/CA/230", "type": "COFFRET METALLIQUE", "installation": "TERMINAL 186", "implantation": "LOCAL TECHNIQUE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 53, "lat": 43.3398175, "lon": 5.3387054, "designation": "TD COMMANDE", "mpsca": "GM/186/NO/4/C/230", "type": "COFFRET METALLIQUE", "installation": "TERMINAL 186", "implantation": "BAR", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 54, "lat": 43.3397345, "lon": 5.3389437, "designation": "TD BAGAGERIE 1.1", "mpsca": "WC/186/NO/8/D/230", "type": "ARMOIRE METALLIQUE", "installation": "TERMINAL 186", "implantation": "BAGAGERIE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 55, "lat": 43.339714, "lon": 5.338941, "designation": "TD BAGAGERIE 1.2", "mpsca": "WC/186/NO/7/D/230", "type": "ARMOIRE METALLIQUE", "installation": "TERMINAL 186", "implantation": "BAGAGERIE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 56, "lat": 43.3394681, "lon": 5.3402795, "designation": "TGBT 400V", "mpsca": "NON REPERTORIE", "type": "COFFRET METALLIQUE", "installation": "TERMINAL 186", "implantation": "TGBT", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 57, "lat": 43.3394672, "lon": 5.3402366, "designation": "TGBT 230V gare centrale H19", "mpsca": "GM/H19/S/1/G/230", "type": "COFFRET METALLIQUE", "installation": "TERMINAL 186", "implantation": "TGBT", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 58, "lat": 43.3397937, "lon": 5.3405868, "designation": "TD LT 60", "mpsca": "GM/H19/NE/3/G/230", "type": "COFFRET METALLIQUE", "installation": "TERMINAL 186", "implantation": "LOCAL TECHNIQUE 60", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 59, "lat": 43.3397937, "lon": 5.340627, "designation": "COMMANDE LOCALE H19", "mpsca": "GM/H19/NE/4/G/230", "type": "COFFRET METALLIQUE", "installation": "TERMINAL 187", "implantation": "N/A", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 60, "lat": 43.3397683, "lon": 5.3406337, "designation": "COFFRET GTB", "mpsca": "GM/H19/NE/5/GTB/230", "type": "COFFRET METALLIQUE", "installation": "TERMINAL 188", "implantation": "N/A", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 61, "lat": 43.3397674, "lon": 5.3405895, "designation": "COFFRET SSI", "mpsca": "GM/H19/NE/6/SSI/230", "type": "COFFRET METALLIQUE", "installation": "TERMINAL 189", "implantation": "N/A", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 62, "lat": 43.339811, "lon": 5.339731, "designation": "TD WC 01", "mpsca": "WC/186/NE/11/D/230", "type": "TABLEAU", "installation": "TERMINAL 186", "implantation": "SALLE D'ATTENTE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 63, "lat": 43.339873, "lon": 5.339083, "designation": "TD WC 02", "mpsca": "WC/186/NE/11/D/230", "type": "TABLEAU", "installation": "TERMINAL 186", "implantation": "SALLE D'ATTENTE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 64, "lat": 43.3394227, "lon": 5.3410654, "designation": "TD PIF", "mpsca": "NON REPERTORIE", "type": "ARMOIRE METALLIQUE", "installation": "PIF", "implantation": "CIRCUIT PASSAGERS", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 65, "lat": 43.3395343, "lon": 5.3410503, "designation": "TT 01", "mpsca": "NON REPERTORIE", "type": "TABLEAU", "installation": "PIF", "implantation": "GUERITE SECURITE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 66, "lat": 43.3395992, "lon": 5.3411506, "designation": "TT 02", "mpsca": "NON REPERTORIE", "type": "TABLEAU", "installation": "PIF", "implantation": "GUERITE DOUANE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 67, "lat": 43.3396435, "lon": 5.3411519, "designation": "TT 03", "mpsca": "NON REPERTORIE", "type": "TABLEAU", "installation": "PIF", "implantation": "GUERITE DOUANE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 68, "lat": 43.3395293, "lon": 5.3411483, "designation": "TT 04", "mpsca": "NON REPERTORIE", "type": "TABLEAU", "installation": "PIF", "implantation": "GUERITE PAF", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 69, "lat": 43.3394922, "lon": 5.341151, "designation": "TT 05", "mpsca": "NON REPERTORIE", "type": "TABLEAU", "installation": "PIF", "implantation": "GUERITE PAF", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 70, "lat": 43.339312, "lon": 5.3430979, "designation": "ECLAIRAGE FACULTATIF", "mpsca": "RH19/S/7/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "RDC STOCKAGE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 71, "lat": 43.3393354, "lon": 5.3431006, "designation": "RIDEAU+PC", "mpsca": "NON REPERTORIE", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "RDC STOCKAGE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 72, "lat": 43.3393499, "lon": 5.3431966, "designation": "TD 01", "mpsca": "RH19/COURS/10/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 2", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 73, "lat": 43.3393617, "lon": 5.3430988, "designation": "TD 02", "mpsca": "RH19/COURS/11/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 4", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 74, "lat": 43.3393582, "lon": 5.3430491, "designation": "TD 03", "mpsca": "RH19/COURS/12/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 5", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 75, "lat": 43.3393675, "lon": 5.3429012, "designation": "TD 04", "mpsca": "RH19/COURS/13/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 8", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 76, "lat": 43.33937, "lon": 5.3428519, "designation": "COFFRET REPARTITION 01", "mpsca": "RH19/COURS/14/R/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 9", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 77, "lat": 43.3393729, "lon": 5.3428022, "designation": "TD 05", "mpsca": "RH19/COURS/15/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 10", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 78, "lat": 43.3393534, "lon": 5.3427995, "designation": "TD 06", "mpsca": "RH19/COURS/16/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 10", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 79, "lat": 43.3393753, "lon": 5.3427533, "designation": "TD 07", "mpsca": "RH19/COURS/17/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 11", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 80, "lat": 43.3393824, "lon": 5.342605, "designation": "TD 08", "mpsca": "RH19/COURS/18/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 14", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 81, "lat": 43.3393934, "lon": 5.3424543, "designation": "TD 09", "mpsca": "RH19/COURS/19/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 17", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 82, "lat": 43.3393739, "lon": 5.3424557, "designation": "TD 10", "mpsca": "RH19/COURS/20/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 17", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 83, "lat": 43.3393972, "lon": 5.3423092, "designation": "TD 11", "mpsca": "RH19/COURS/21/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 20", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 84, "lat": 43.3394043, "lon": 5.3421609, "designation": "TD 12", "mpsca": "RH19/COURS/22/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 23", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 85, "lat": 43.3394067, "lon": 5.342112, "designation": "COFFRET REPARTITION 02", "mpsca": "RH19/COURS/23/R/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 24", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 86, "lat": 43.339412, "lon": 5.3420134, "designation": "TD 14", "mpsca": "RH19/COURS/24/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 26", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 87, "lat": 43.3394154, "lon": 5.341961, "designation": "TD 15", "mpsca": "RH19/COURS/25/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 27", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 88, "lat": 43.3393939, "lon": 5.341961, "designation": "TD 16", "mpsca": "RH19/COURS/26/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 27", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 89, "lat": 43.3394192, "lon": 5.3418651, "designation": "TD 17", "mpsca": "RH19/COURS/27/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE//TRAVEE 29", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 90, "lat": 43.3394006, "lon": 5.3418638, "designation": "TD 18", "mpsca": "RH19/COURS/28/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 32", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 91, "lat": 43.3394249, "lon": 5.3417203, "designation": "TD 19", "mpsca": "RH19/COURS/29/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 35", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 92, "lat": 43.3394346, "lon": 5.3415693, "designation": "TD 20", "mpsca": "RH19/COURS/30/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 35", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 93, "lat": 43.3394151, "lon": 5.341568, "designation": "TD 22", "mpsca": "RH19/COURS/31/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 41", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 94, "lat": 43.3394583, "lon": 5.3410755, "designation": "TD 23", "mpsca": "RH19/COURS/32/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 45", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 95, "lat": 43.3394456, "lon": 5.3410755, "designation": "TD 24", "mpsca": "RH19/COURS/33/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 45", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 96, "lat": 43.3394648, "lon": 5.3409272, "designation": "TD 25", "mpsca": "RH19/COURS/34/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 48", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 97, "lat": 43.3394453, "lon": 5.3409272, "designation": "TD 26", "mpsca": "RH19/COURS/35/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 48", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 98, "lat": 43.3394731, "lon": 5.3407797, "designation": "TD 27", "mpsca": "RH19/COURS/36/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 51", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 99, "lat": 43.3394555, "lon": 5.3407797, "designation": "TD 28", "mpsca": "RH19/COURS/37/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 51", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 100, "lat": 43.3395087, "lon": 5.3406314, "designation": "TD 29", "mpsca": "RH19/COURS/38/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 54", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 101, "lat": 43.3394863, "lon": 5.34063, "designation": "TD 30", "mpsca": "RH19/COURS/39/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 54", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 102, "lat": 43.3394638, "lon": 5.3406287, "designation": "TD 31", "mpsca": "RH19/COURS/40/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 54", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 103, "lat": 43.3394913, "lon": 5.3404839, "designation": "TD 32", "mpsca": "RH19/COURS/41/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 57", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 104, "lat": 43.3394776, "lon": 5.3404839, "designation": "TD 33", "mpsca": "RH19/COURS/42/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 57", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 105, "lat": 43.3394997, "lon": 5.3403361, "designation": "TD 34", "mpsca": "RH19/COURS/43/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 60", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 106, "lat": 43.3394831, "lon": 5.3403348, "designation": "TD 35", "mpsca": "RH19/COURS/44/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 60", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 107, "lat": 43.3395084, "lon": 5.340237, "designation": "TD 36", "mpsca": "RH19/COURS/45/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 62", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 108, "lat": 43.3394986, "lon": 5.340237, "designation": "TD 37", "mpsca": "RH19/COURS/46/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 62", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 109, "lat": 43.3395039, "lon": 5.3401873, "designation": "TD 38", "mpsca": "RH19/COURS/47/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 63", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 110, "lat": 43.3394893, "lon": 5.3401873, "designation": "TD 39", "mpsca": "RH19/COURS/48/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 63", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 111, "lat": 43.3395081, "lon": 5.3401139, "designation": "COFFRET VEILLEUSE GENERAL", "mpsca": "RH19/COURS/49/R/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 65", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 112, "lat": 43.3395089, "lon": 5.3400642, "designation": "TD 40", "mpsca": "RH19/COURS/51/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 66", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 113, "lat": 43.3394962, "lon": 5.3400629, "designation": "TD 41", "mpsca": "RH19/COURS/52/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 66", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 114, "lat": 43.3395158, "lon": 5.3399159, "designation": "TD 42", "mpsca": "RH19/COURS/53/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 69", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 115, "lat": 43.3394982, "lon": 5.3399146, "designation": "TD 43", "mpsca": "RH19/COURS/54/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 69", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 116, "lat": 43.3394956, "lon": 5.3397578, "designation": "TD 44", "mpsca": "RH19/COURS/55/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 72", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 117, "lat": 43.3395141, "lon": 5.3397578, "designation": "TD 45", "mpsca": "RH19/COURS/56/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 72", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 118, "lat": 43.3395326, "lon": 5.3397578, "designation": "TD 46", "mpsca": "RH19/COURS/57/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 72", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 119, "lat": 43.3395294, "lon": 5.3396185, "designation": "TD 47", "mpsca": "RH19/COURS/58/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 75", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 120, "lat": 43.3395359, "lon": 5.3394718, "designation": "TD 48", "mpsca": "RH19/COURS/59/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 78", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 121, "lat": 43.3395545, "lon": 5.3394213, "designation": "TD 49", "mpsca": "RH19/COURS/60/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 79", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 122, "lat": 43.3395389, "lon": 5.3394213, "designation": "TD 50", "mpsca": "RH19/COURS/61/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 79", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 123, "lat": 43.3395413, "lon": 5.3393235, "designation": "TD 51", "mpsca": "RH19/COURS/62/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 81", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 124, "lat": 43.3395484, "lon": 5.3391752, "designation": "TD 52", "mpsca": "RH19/COURS/63/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 84", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 125, "lat": 43.3395555, "lon": 5.3390269, "designation": "TD 53", "mpsca": "RH19/COURS/64/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 87", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 126, "lat": 43.3395407, "lon": 5.3388948, "designation": "TD 54", "mpsca": "RH19/COURS/65/D/230", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 88", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 127, "lat": 43.3394463, "lon": 5.3406622, "designation": "TD 56", "mpsca": "RH19/COURS/66/R", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/MUR 186", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 128, "lat": 43.3394463, "lon": 5.3406622, "designation": "TD 57", "mpsca": "NON REPERTORIE", "type": "COFFRET ETANCHE", "installation": "H19", "implantation": "MEZZANINE/TRAVEE 53", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 129, "lat": 43.3378447, "lon": 5.3448462, "designation": "TGBT LOCAL CFO (1)", "mpsca": "H18/TGBT/O/9/G/230-400", "type": "ARMOIRE METALLIQUE", "installation": "H 18", "implantation": "LOCAL CFO", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 130, "lat": 43.337833, "lon": 5.3448153, "designation": "TGBT LOCAL CFO (2)", "mpsca": "H18/TGBT/O/8/G/230-400", "type": "ARMOIRE METALLIQUE", "installation": "H 18", "implantation": "LOCAL CFO", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 131, "lat": 43.3378554, "lon": 5.3448757, "designation": "TGBT LOCAL CFO (3)", "mpsca": "H18/TGBT/O/7/G/230-400", "type": "ARMOIRE METALLIQUE", "installation": "H 18", "implantation": "LOCAL CFO", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 132, "lat": 43.3378837, "lon": 5.3448623, "designation": "COFFRET VEILLEUSE", "mpsca": "H18/TGBT/O/10/G/230-400", "type": "TABLEAU", "installation": "H 18", "implantation": "LOCAL CFO", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 133, "lat": 43.337784, "lon": 5.3449441, "designation": "COFFRET CONTROLE ACCES", "mpsca": "H18/API/O/3/G/230", "type": "COFFRET", "installation": "H 18", "implantation": "LOCAL CFA", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 134, "lat": 43.3377645, "lon": 5.3449616, "designation": "COFFRET API", "mpsca": "H18/API/O/4/V/230", "type": "COFFRET", "installation": "H 18", "implantation": "LOCAL CFA", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 135, "lat": 43.3378045, "lon": 5.3448825, "designation": "COFFRET COMMANDE", "mpsca": "H18/CM/O/6/C/230", "type": "COFFRET", "installation": "H 18", "implantation": "LOCAL CFA", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 136, "lat": 43.3378143, "lon": 5.3449187, "designation": "TD CFA", "mpsca": "H18/TD/O/5/G/400", "type": "TABLEAU", "installation": "H 18", "implantation": "LOCAL CFA", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 137, "lat": 43.337235, "lon": 5.345371, "designation": "TD WC PUBLIC", "mpsca": "NON REPERTORIE", "type": "TABLEAU", "installation": "H 18", "implantation": "SANITAIRES PUBLIC", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 138, "lat": 43.338849, "lon": 5.343982, "designation": "TD ZC 3", "mpsca": "NON REPERTORIE", "type": "COFFRET", "installation": "H 18", "implantation": "LOCAL TECHNIQUE ZC3", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 139, "lat": 43.337028, "lon": 5.345717, "designation": "TD ZC 4", "mpsca": "NON REPERTORIE", "type": "COFFRET", "installation": "H 18", "implantation": "LOCAL TECHNIQUE ZC4", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 140, "lat": 43.338909, "lon": 5.34497, "designation": "TT G1", "mpsca": "H18/GPAF/SO/8/D/230", "type": "TABLEAU", "installation": "H 18", "implantation": "GUERITE 01 PAF", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 141, "lat": 43.338892, "lon": 5.344928, "designation": "TT G2", "mpsca": "H18/GPAF/SO/9/D/230", "type": "TABLEAU", "installation": "H 18", "implantation": "GUERITE 02 PAF", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 142, "lat": 43.338893, "lon": 5.34487, "designation": "TT G3", "mpsca": "H18/GPAF/SO/10/D/230", "type": "TABLEAU", "installation": "H 18", "implantation": "GUERITE 03 PAF", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 143, "lat": 43.338893, "lon": 5.34487, "designation": "TT G4", "mpsca": "H18/GPAF/SO/11/D/230", "type": "TABLEAU", "installation": "H 18", "implantation": "GUERITE 04 PAF", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 144, "lat": 43.338861, "lon": 5.344765, "designation": "TT G5", "mpsca": "H18/GPAF/SO/12/D/230", "type": "TABLEAU", "installation": "H 18", "implantation": "GUERITE 05 PAF", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 145, "lat": 43.338833, "lon": 5.34473, "designation": "TT G6", "mpsca": "H18/GPAF/SO/13/D/230", "type": "TABLEAU", "installation": "H 18", "implantation": "GUERITE 06 PAF", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 146, "lat": 43.338725, "lon": 5.345129, "designation": "TD CONTROLE PAF", "mpsca": "H18/GPAF/SO/7/D/230", "type": "TABLEAU", "installation": "H 18", "implantation": "BUREAU DE CONTROLE PAF", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 147, "lat": 43.3391543, "lon": 5.3444897, "designation": "TD 01", "mpsca": "NON REPERTORIE", "type": "ARMOIRE FIBROCIMENT", "installation": "H 18", "implantation": "PROCHE ALGECO SERVEUR PAF", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 148, "lat": 43.3392238, "lon": 5.3444599, "designation": "TT SERVEUR PAF", "mpsca": "NON REPERTORIE", "type": "TABLEAU", "installation": "H 18", "implantation": "ALGECO SERVEUR PAF", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 149, "lat": 43.339356, "lon": 5.345328, "designation": "TD DOUANE", "mpsca": "NON REPERTORIE", "type": "TABLEAU", "installation": "H 18", "implantation": "EXTERIEUR / BUREAU DE CONTROLE DOUANE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 150, "lat": 43.33912, "lon": 5.345586, "designation": "TD DETAXE", "mpsca": "NON REPERTORIE", "type": "TABLEAU", "installation": "H 18", "implantation": "EXTERIEUR / BORNE DE DETAXE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 151, "lat": 43.339003, "lon": 5.345602, "designation": "TD WC PAF/DOUANE", "mpsca": "NON REPERTORIE", "type": "TABLEAU", "installation": "H 18", "implantation": "EXTERIEUR / SANITAIRES RESERVE POLICE/DOUANE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 152, "lat": 43.338954, "lon": 5.345495, "designation": "TD SERVEUR PAF EXT.", "mpsca": "NON REPERTORIE", "type": "TABLEAU", "installation": "H 18", "implantation": "N/A", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 153, "lat": 43.3363803, "lon": 5.3468893, "designation": "TG1", "mpsca": "NON REPERTORIE", "type": "ARMOIRE METALLIQUE", "installation": "GARE MARITIME CAP JANET", "implantation": "LOCAL CFO", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 154, "lat": 43.3363534, "lon": 5.3468986, "designation": "TG2", "mpsca": "NON REPERTORIE", "type": "ARMOIRE METALLIQUE", "installation": "GARE MARITIME CAP JANET", "implantation": "LOCAL CFO", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 155, "lat": 43.3363417, "lon": 5.3468199, "designation": "TGHQ", "mpsca": "NON REPERTORIE", "type": "ARMOIRE METALLIQUE", "installation": "GARE MARITIME CAP JANET", "implantation": "LOCAL CFO", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 156, "lat": 43.3363363, "lon": 5.3469542, "designation": "TG CLIM?", "mpsca": "NON REPERTORIE", "type": "ARMOIRE METALLIQUE", "installation": "GARE MARITIME CAP JANET", "implantation": "LOCAL CFA", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 157, "lat": 43.3363899, "lon": 5.3467106, "designation": "CONTROLE POLICE", "mpsca": "NON REPERTORIE", "type": "ARMOIRE METALLIQUE", "installation": "GARE MARITIME CAP JANET", "implantation": "LOCAL CFA", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 158, "lat": 43.3363617, "lon": 5.3466252, "designation": " DOUANE", "mpsca": "NON REPERTORIE", "type": "ARMOIRE METALLIQUE", "installation": "GARE MARITIME CAP JANET", "implantation": "LOCAL CFA", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 159, "lat": 43.3364389, "lon": 5.3471931, "designation": "TT G1", "mpsca": "NON REPERTORIE", "type": "TABLEAU", "installation": "TP CAP JANET EMBARQUEMENT", "implantation": "GUERITE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 160, "lat": 43.3364496, "lon": 5.347228, "designation": "TT G2", "mpsca": "NON REPERTORIE", "type": "TABLEAU", "installation": "TP CAP JANET EMBARQUEMENT", "implantation": "GUERITE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 161, "lat": 43.3364593, "lon": 5.3472696, "designation": "TT G3", "mpsca": "NON REPERTORIE", "type": "TABLEAU", "installation": "TP CAP JANET EMBARQUEMENT", "implantation": "GUERITE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 162, "lat": 43.336472, "lon": 5.3473071, "designation": "TT G4", "mpsca": "NON REPERTORIE", "type": "TABLEAU", "installation": "TP CAP JANET EMBARQUEMENT", "implantation": "GUERITE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 163, "lat": 43.3364808, "lon": 5.3473514, "designation": "TT G5", "mpsca": "NON REPERTORIE", "type": "TABLEAU", "installation": "TP CAP JANET EMBARQUEMENT", "implantation": "GUERITE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 164, "lat": 43.336473, "lon": 5.3471636, "designation": "TT G6", "mpsca": "NON REPERTORIE", "type": "TABLEAU", "installation": "TP CAP JANET EMBARQUEMENT", "implantation": "GUERITE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 165, "lat": 43.3364876, "lon": 5.3471985, "designation": "TT G7", "mpsca": "NON REPERTORIE", "type": "TABLEAU", "installation": "TP CAP JANET EMBARQUEMENT", "implantation": "GUERITE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 166, "lat": 43.3365003, "lon": 5.3472387, "designation": "TT G8", "mpsca": "NON REPERTORIE", "type": "TABLEAU", "installation": "TP CAP JANET EMBARQUEMENT", "implantation": "GUERITE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 167, "lat": 43.336512, "lon": 5.3472803, "designation": "TT G9", "mpsca": "NON REPERTORIE", "type": "TABLEAU", "installation": "TP CAP JANET EMBARQUEMENT", "implantation": "GUERITE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 168, "lat": 43.3365266, "lon": 5.3473232, "designation": "TT G10", "mpsca": "NON REPERTORIE", "type": "TABLEAU", "installation": "TP CAP JANET EMBARQUEMENT", "implantation": "GUERITE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 169, "lat": 43.3365393, "lon": 5.3473715, "designation": "TT G11", "mpsca": "NON REPERTORIE", "type": "TABLEAU", "installation": "TP CAP JANET EMBARQUEMENT", "implantation": "GUERITE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 170, "lat": 43.335271, "lon": 5.343754, "designation": "TD ZC 5 ?", "mpsca": "NON REPERTORIE", "type": "COFFRET METALLIQUE", "installation": "TP CAP JANET DEBARQUEMENT", "implantation": "LOCAL TECHNIQUE ZC0", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 171, "lat": 43.335271, "lon": 5.343754, "designation": "TD ZC 1 HOMMES", "mpsca": "NON REPERTORIE", "type": "COFFRET METALLIQUE", "installation": "TP CAP JANET DEBARQUEMENT", "implantation": "LOCAL TECHNIQUE ZC1", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 172, "lat": 43.335806, "lon": 5.345168, "designation": "TD ZC 2 FEMMES", "mpsca": "NON REPERTORIE", "type": "COFFRET METALLIQUE", "installation": "TP CAP JANET DEBARQUEMENT", "implantation": "LOCAL TECHNIQUE ZC2", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 173, "lat": 43.335806, "lon": 5.345168, "designation": "TT G1", "mpsca": "H18/GPAF/SO/6/D/230", "type": "TABLEAU", "installation": "TP CAP JANET DEBARQUEMENT", "implantation": "GUERITE 01 PAF", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 174, "lat": 43.335848, "lon": 5.34519, "designation": "TT G2", "mpsca": "H18/GPAF/SO/5/D/230", "type": "TABLEAU", "installation": "TP CAP JANET DEBARQUEMENT", "implantation": "GUERITE 02 PAF", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 175, "lat": 43.335892, "lon": 5.345165, "designation": "TT G3", "mpsca": "H18/GPAF/SO/4/D/230", "type": "TABLEAU", "installation": "TP CAP JANET DEBARQUEMENT", "implantation": "GUERITE 03 PAF", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 176, "lat": 43.335931, "lon": 5.345198, "designation": "TT G4", "mpsca": "H18/GPAF/SO/3/D/230", "type": "TABLEAU", "installation": "TP CAP JANET DEBARQUEMENT", "implantation": "GUERITE 04 PAF", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 177, "lat": 43.335974, "lon": 5.345174, "designation": "TT G5", "mpsca": "H18/GPAF/SO/2/D/230", "type": "TABLEAU", "installation": "TP CAP JANET DEBARQUEMENT", "implantation": "GUERITE 05 PAF", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 178, "lat": 43.336015, "lon": 5.345217, "designation": "TT G6", "mpsca": "H18/GPAF/SO/1/D/230", "type": "TABLEAU", "installation": "TP CAP JANET DEBARQUEMENT", "implantation": "GUERITE 06 PAF", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 179, "lat": 43.336059, "lon": 5.345187, "designation": "TT G7", "mpsca": "H18/GPAF/SO/0/D/230", "type": "TABLEAU", "installation": "TP CAP JANET DEBARQUEMENT", "implantation": "GUERITE 07 PAF", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 180, "lat": 43.335725, "lon": 5.345462, "designation": "TD PAF", "mpsca": "NON REPERTORIE", "type": "TABLEAU", "installation": "TP CAP JANET DEBARQUEMENT", "implantation": "BUREAU DE CONTROLE POLICE DEBARQUEMENT", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 181, "lat": 43.335724, "lon": 5.345597, "designation": "TD WC ", "mpsca": "NON REPERTORIE", "type": "TABLEAU", "installation": "TP CAP JANET DEBARQUEMENT", "implantation": "WC DOUANE/POLICE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 182, "lat": 43.335724, "lon": 5.345597, "designation": "TGBT H16", "mpsca": "NON REPERTORIE", "type": "COFFRET METALLIQUE", "installation": "H 16", "implantation": "LOCAL CFO", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 183, "lat": 43.3354678, "lon": 5.3458366, "designation": "SOURCE CENTRALE", "mpsca": "NON REPERTORIE", "type": "COFFRET METALLIQUE", "installation": "H 16", "implantation": "LOCAL CFO", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 184, "lat": 43.335382, "lon": 5.3468528, "designation": "TD LT 39", "mpsca": "NON REPERTORIE", "type": "COFFRET METALLIQUE", "installation": "H 16", "implantation": "LOCAL CFA LT 39", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 185, "lat": 43.335177, "lon": 5.345616, "designation": "TD H16 RDC", "mpsca": "NON REPERTORIE", "type": "COFFRET METALLIQUE", "installation": "H 16", "implantation": "WC RDC H16", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 186, "lat": 43.335177, "lon": 5.3455704, "designation": "TD H16 R+1", "mpsca": "NON REPERTORIE", "type": "COFFRET METALLIQUE", "installation": "H 16", "implantation": "WC R+1 H16", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 187, "lat": 43.335177, "lon": 5.3455704, "designation": "TGBT T1", "mpsca": "N/A", "type": "ARMOIRE METALLIQUE", "installation": "GARE MARITIME ARENC", "implantation": "LOCAL TECHNIQUE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 188, "lat": 43.313085, "lon": 5.364772, "designation": "AFC CLIM", "mpsca": "NON REPERTORIE", "type": "ARMOIRE FIBROCIMENT", "installation": "GARE MARITIME ARENC", "implantation": "EXTERIEUR GARE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 189, "lat": 43.31302, "lon": 5.365, "designation": "TD T1 STOCKAGE", "mpsca": "GM/T1/SE/6/G/400-230", "type": "TABLEAU", "installation": "ARENC", "implantation": "STOCKAGE ELEC/MECA", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 190, "lat": 43.31299, "lon": 5.36604, "designation": "TT WC CHANTERAC", "mpsca": "GM/T1/SE/8/D/230", "type": "TABLEAU", "installation": "CHANTERAC", "implantation": "WC ", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 191, "lat": 43.31108, "lon": 5.36638, "designation": "COFFRET GTB", "mpsca": "NON REPERTORIE", "type": "COFFRET METALLIQUE", "installation": "SILO", "implantation": "SOUS SILO", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 192, "lat": 43.31105, "lon": 5.36638, "designation": "COFFRET ECLAIRAGE SOUS SILO", "mpsca": "GM/CHANTERAC/SO/3/D/230", "type": "COFFRET METALLIQUE", "installation": "SILO", "implantation": "SOUS SILO", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 193, "lat": 43.30825, "lon": 5.36504, "designation": "TD WC", "mpsca": "N/A", "type": "COFFRET", "installation": "CENTRE AUTO", "implantation": "LOCAL TECHNIQUE WC", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 194, "lat": 43.3082, "lon": 5.36508, "designation": "TT 01", "mpsca": "GM/PF/SE/9/D/230", "type": "TABLEAU", "installation": "CENTRE AUTO", "implantation": "EXTERIEUR WC", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 195, "lat": 43.30826, "lon": 5.36527, "designation": "TT G1", "mpsca": "NON REPERTORIE", "type": "TABLEAU", "installation": "CENTRE AUTO", "implantation": "GUERITE 01 CORSICA LINEA", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 196, "lat": 43.30811, "lon": 5.36527, "designation": "TT G2", "mpsca": "NON REPERTORIE", "type": "TABLEAU", "installation": "CENTRE AUTO", "implantation": "GUERITE 02 CORSICA LINEA", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 197, "lat": 43.30825, "lon": 5.36535, "designation": "TT G3", "mpsca": "NON REPERTORIE", "type": "TABLEAU", "installation": "CENTRE AUTO", "implantation": "GUERITE 03 CORSICA LINEA", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 198, "lat": 43.3081, "lon": 5.36536, "designation": "TT G4", "mpsca": "NON REPERTORIE", "type": "TABLEAU", "installation": "CENTRE AUTO", "implantation": "GUERITE 04 CORSICA LINEA", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 199, "lat": 43.30823, "lon": 5.36543, "designation": "TT G5", "mpsca": "NON REPERTORIE", "type": "TABLEAU", "installation": "CENTRE AUTO", "implantation": "GUERITE 05 CORSICA LINEA", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 200, "lat": 43.30808, "lon": 5.36544, "designation": "TT G6", "mpsca": "NON REPERTORIE", "type": "TABLEAU", "installation": "CENTRE AUTO", "implantation": "GUERITE 06 CORSICA LINEA", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 201, "lat": 43.30822, "lon": 5.36551, "designation": "TT G7", "mpsca": "NON REPERTORIE", "type": "TABLEAU", "installation": "CENTRE AUTO", "implantation": "GUERITE 07 CORSICA LINEA", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 202, "lat": 43.30807, "lon": 5.36553, "designation": "TT G8", "mpsca": "NON REPERTORIE", "type": "TABLEAU", "installation": "CENTRE AUTO", "implantation": "GUERITE 08 CORSICA LINEA", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 203, "lat": 43.30821, "lon": 5.3656, "designation": "TT G9", "mpsca": "NON REPERTORIE", "type": "TABLEAU", "installation": "CENTRE AUTO", "implantation": "GUERITE 09 CORSICA LINEA", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 204, "lat": 43.30805, "lon": 5.36561, "designation": "TT G10", "mpsca": "NON REPERTORIE", "type": "TABLEAU", "installation": "CENTRE AUTO", "implantation": "GUERITE 10 ENTMV", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 205, "lat": 43.3082, "lon": 5.36568, "designation": "TT G11", "mpsca": "NON REPERTORIE", "type": "TABLEAU", "installation": "CENTRE AUTO", "implantation": "GUERITE 11 ENTMV", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 206, "lat": 43.30818, "lon": 5.36577, "designation": "TT G12", "mpsca": "NON REPERTORIE", "type": "TABLEAU", "installation": "CENTRE AUTO", "implantation": "GUERITE 12 ENTMV", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 207, "lat": 43.307792, "lon": 5.3648814, "designation": "TGBT NORMAL (1)", "mpsca": "GM/PF/SE/0/G/400-230", "type": "ARMOIRE METALLIQUE", "installation": "CENTRE AUTO", "implantation": "PR 207", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 208, "lat": 43.3078193, "lon": 5.3648841, "designation": "TGBT NORMAL (2)", "mpsca": "GM/PF/SE/1/G/400-230", "type": "ARMOIRE METALLIQUE", "installation": "CENTRE AUTO", "implantation": "PR 207", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 209, "lat": 43.3078508, "lon": 5.364893, "designation": "TABLEAU 220V NORMAL", "mpsca": "GM/PF/SE/6/G/230", "type": "ARMOIRE METALLIQUE", "installation": "CENTRE AUTO", "implantation": "PR 207", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 210, "lat": 43.3078141, "lon": 5.3648045, "designation": "TGRDC ONDULE", "mpsca": "GM/PF/SE/5/D/230", "type": "COFFRET METALLIQUE", "installation": "CENTRE AUTO", "implantation": "PR 207", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 211, "lat": 43.3078366, "lon": 5.364822, "designation": "COMMANDES ROTATIVES", "mpsca": "GM/PF/SE/4/C/230", "type": "COFFRET METALLIQUE", "installation": "CENTRE AUTO", "implantation": "PR 208", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 212, "lat": 43.3078346, "lon": 5.364786, "designation": "TGBT ONDULE", "mpsca": "GM/PF/SE/2/G/230", "type": "COFFRET METALLIQUE", "installation": "CENTRE AUTO", "implantation": "PR 207", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 213, "lat": 43.3078593, "lon": 5.3648006, "designation": "TABLEAU 220V SECOURU", "mpsca": "GM/PF/SE/3/G/230", "type": "COFFRET METALLIQUE", "installation": "CENTRE AUTO", "implantation": "PR 207", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 214, "lat": 43.3053348, "lon": 5.3628827, "designation": "TD MEZZA", "mpsca": "AT/MECA/ETAGE SUD/G/1/230", "type": "TABLEAU", "installation": "ATELIER MECA", "implantation": "MEZZANINE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 215, "lat": 43.3054, "lon": 5.36289, "designation": "TGBT", "mpsca": "AT/MECA/NO/G/2/230-400", "type": "ARMOIRE METALLIQUE", "installation": "ATELIER MECA", "implantation": "RDC", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 216, "lat": 43.30556, "lon": 5.36293, "designation": "TD ELEC", "mpsca": "AT/ELEC/NE/G/5/230", "type": "COFFRET", "installation": "ATELIER ELEC", "implantation": "RDC", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 217, "lat": 43.30563, "lon": 5.363113, "designation": "TGBT ECL", "mpsca": "GM/J0/SO/1/D/230", "type": "ARMOIRE METALLIQUE", "installation": "J0", "implantation": "PROXIMITE PORTAIL AUTO J0", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 218, "lat": 43.305493, "lon": 5.363869, "designation": "TD PAF", "mpsca": "N/A", "type": "TABLEAU", "installation": "J0", "implantation": "BUREAU DE CONTROLE PAF", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 219, "lat": 43.305429, "lon": 5.363244, "designation": "TD DETAXE", "mpsca": "N/A", "type": "TABLEAU", "installation": "J0", "implantation": "BUREAU DETAXE DOUANE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 220, "lat": 43.305355, "lon": 5.363267, "designation": "TD DOUANE", "mpsca": "N/A", "type": "TABLEAU", "installation": "J0", "implantation": "BUREAU DE CONTROLE DOUANE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 221, "lat": 43.30525, "lon": 5.363091, "designation": "TT 03", "mpsca": "N/A", "type": "TABLEAU", "installation": "J0", "implantation": "LOCAL VIDE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 222, "lat": 43.305466, "lon": 5.363736, "designation": "TT G1", "mpsca": "N/A", "type": "TABLEAU", "installation": "J0", "implantation": "GUERITE 01 PAF", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 223, "lat": 43.30537, "lon": 5.363698, "designation": "TT G2", "mpsca": "N/A", "type": "TABLEAU", "installation": "J0", "implantation": "GUERITE 02 PAF", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 224, "lat": 43.305456, "lon": 5.363857, "designation": "TT G3", "mpsca": "N/A", "type": "TABLEAU", "installation": "J0", "implantation": "GUERITE 03 PAF", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 225, "lat": 43.305389, "lon": 5.363833, "designation": "TT G4", "mpsca": "N/A", "type": "TABLEAU", "installation": "J0", "implantation": "GUERITE 04 PAF", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 226, "lat": 43.305293, "lon": 5.363661, "designation": "TT G5", "mpsca": "N/A", "type": "TABLEAU", "installation": "J0", "implantation": "GUERITE 05 PAF", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 227, "lat": 43.305187, "lon": 5.363785, "designation": "TT G6", "mpsca": "N/A", "type": "TABLEAU", "installation": "J0", "implantation": "GUERITE 06 PAF", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 228, "lat": 43.307868, "lon": 5.363603, "designation": "TD WC 78", "mpsca": "N/A", "type": "TABLEAU", "installation": "TDP  ", "implantation": "LOCAL TECHNIQUE WC 78 (TUNNEL 2)", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 229, "lat": 43.306613, "lon": 5.363261, "designation": "TD WC 80", "mpsca": "N/A", "type": "TABLEAU", "installation": "TDP  ", "implantation": "LOCAL TECHNIQUE WC 80 (TUNNEL 2)", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 230, "lat": 43.3057754, "lon": 5.3644897, "designation": "AEBQ PCS", "mpsca": "TDP/PCA/49/D/230-400", "type": "ARMOIRE METALLIQUE", "installation": "TDP  ", "implantation": "PC AVEUGLE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 231, "lat": 43.3057754, "lon": 5.3645296, "designation": "AEHQ PCS", "mpsca": "TDP/PCA/50/D/230-400", "type": "ARMOIRE METALLIQUE", "installation": "TDP  ", "implantation": "PC AVEUGLE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 232, "lat": 43.3057754, "lon": 5.3644488, "designation": "COFFRET GTC N\u00b00", "mpsca": "TD/PCA/51/GTC/230", "type": "ARMOIRE METALLIQUE", "installation": "TDP  ", "implantation": "PC AVEUGLE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 233, "lat": 43.305749, "lon": 5.3644122, "designation": "COFFRET GTB N\u00b00", "mpsca": "TD/PCA/52/GTC/230", "type": "ARMOIRE METALLIQUE", "installation": "TDP  ", "implantation": "PC AVEUGLE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 234, "lat": 43.30575, "lon": 5.3644883, "designation": "COFFRET API", "mpsca": "TD/PCA/53/API/230", "type": "ARMOIRE METALLIQUE", "installation": "TDP  ", "implantation": "PC AVEUGLE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 235, "lat": 43.30575, "lon": 5.3645296, "designation": "TC ECL", "mpsca": "TD/PCA/54/CI/230", "type": "ARMOIRE METALLIQUE", "installation": "TDP  ", "implantation": "PC AVEUGLE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 236, "lat": 43.30575, "lon": 5.3644501, "designation": "COFFRET ANEMO/SOUFFLAGE", "mpsca": "TD/PCA/55/DI/231", "type": "ARMOIRE METALLIQUE", "installation": "TDP  ", "implantation": "PC AVEUGLE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 237, "lat": 43.3059498, "lon": 5.3645923, "designation": "AGBT", "mpsca": "TDP/GE/E/O/G/400", "type": "ARMOIRE METALLIQUE", "installation": "TDP  ", "implantation": "LOCAUX TECHNIQUES / GES/AGBT", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 238, "lat": 43.3059752, "lon": 5.3645722, "designation": "TGES", "mpsca": "TDP/TQES/E/5/D/400-230", "type": "ARMOIRE METALLIQUE", "installation": "TDP  ", "implantation": "LOCAUX TECHNIQUES / TQES", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 239, "lat": 43.3059752, "lon": 5.3646097, "designation": "SOURCE CENTRALE", "mpsca": "TDT/BAAS/E/O/G/230", "type": "ARMOIRE METALLIQUE", "installation": "TDP  ", "implantation": "LOCAUX TECHNIQUES / LOCAL SOURCE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 240, "lat": 43.3060005, "lon": 5.3645735, "designation": "TGSO", "mpsca": "TDP/TGSO/E/8/G/230-400", "type": "ARMOIRE METALLIQUE", "installation": "TDP  ", "implantation": "LOCAUX TECHNIQUES / LOCAL TGSO", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 241, "lat": 43.3060015, "lon": 5.3645306, "designation": "TGRO", "mpsca": "TDP/TGSO/E/9/G/230-400", "type": "ARMOIRE METALLIQUE", "installation": "TDP  ", "implantation": "LOCAUX TECHNIQUES / LOCAL TGRO", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 242, "lat": 43.3060308, "lon": 5.3645279, "designation": "GTC N\u00b01", "mpsca": "TDP/E/10/GTC/230", "type": "ARMOIRE METALLIQUE", "installation": "TDP  ", "implantation": "LOCAUX TECHNIQUES / COULOIR", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 243, "lat": 43.3060298, "lon": 5.3645695, "designation": "GTB N\u00b01", "mpsca": "TDP/E/10/GTC/230", "type": "ARMOIRE METALLIQUE", "installation": "TDP  ", "implantation": "LOCAUX TECHNIQUES / COULOIR", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 244, "lat": 43.3060298, "lon": 5.3644837, "designation": "COFFRET VENTILATION", "mpsca": "TDP/E/7/D/400", "type": "ARMOIRE METALLIQUE", "installation": "TDP  ", "implantation": "LOCAUX TECHNIQUES / COULOIR", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 245, "lat": 43.3064261, "lon": 5.3645767, "designation": "AEBQ VR", "mpsca": "NON REPERTORIE", "type": "ARMOIRE METALLIQUE", "installation": "TDP  ", "implantation": "AEBQ TUNNEL 1 GPMM AE SECU", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 246, "lat": 43.3064036, "lon": 5.3646156, "designation": "AE SECU VR", "mpsca": "NON REPERTORIE", "type": "ARMOIRE METALLIQUE", "installation": "TDP  ", "implantation": "AEBQ TUNNEL 1 GPMM AE SECU", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 247, "lat": 43.3064036, "lon": 5.3645794, "designation": "AGSC VR", "mpsca": "NON REPERTORIE", "type": "COFFRET METALLIQUE", "installation": "TDP  ", "implantation": "AEBQ TUNNEL 1 GPMM AE SECU", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 248, "lat": 43.3064271, "lon": 5.3646129, "designation": "COFFRET CFA 2", "mpsca": "NON REPERTORIE", "type": "COFFRET METALLIQUE", "installation": "TDP  ", "implantation": "AEBQ TUNNEL 1 GPMM AE SECU", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 249, "lat": 43.3065659, "lon": 5.3640613, "designation": "COFFRET GTB N\u00b02", "mpsca": "TDP/EMB/AEBQ2/SE/30/GTB/230", "type": "COFFRET METALLIQUE", "installation": "TDP  ", "implantation": "AEBQ TUNNEL 2 GPMM AE SECU", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 250, "lat": 43.3065249, "lon": 5.3639902, "designation": "COFFRET GTC N\u00b02", "mpsca": "TDP/EMB/AEBQ2/SE/30/GTC/230", "type": "COFFRET METALLIQUE", "installation": "TDP  ", "implantation": "AEBQ TUNNEL 2 GPMM AE SECU", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 251, "lat": 43.3065659, "lon": 5.3639808, "designation": "COFFRET CFA 1", "mpsca": "TDP/EMB/AEBQ2/SE/29/D/230", "type": "COFFRET METALLIQUE", "installation": "TDP  ", "implantation": "AEBQ TUNNEL 2 GPMM AE SECU", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 252, "lat": 43.3065669, "lon": 5.364021, "designation": "AGSC 2", "mpsca": "TDP/EMB/AEBQ2/SE/28/D/230", "type": "ARMOIRE METALLIQUE", "installation": "TDP  ", "implantation": "AEBQ TUNNEL 2 GPMM AE SECU", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 253, "lat": 43.3065259, "lon": 5.3640251, "designation": "AE SECU 2", "mpsca": "TDP/EMB/AEBQ2/SE/27/D/230-400", "type": "ARMOIRE METALLIQUE", "installation": "TDP  ", "implantation": "AEBQ TUNNEL 2 GPMM AE SECU", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 254, "lat": 43.3065279, "lon": 5.3640599, "designation": "AEBQ C2", "mpsca": "TDP/EMB/AEBQ2/SE/26/D/230-400", "type": "ARMOIRE METALLIQUE", "installation": "TDP  ", "implantation": "AEBQ TUNNEL 2 GPMM AE SECU", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 255, "lat": 43.3066385, "lon": 5.3640682, "designation": "AEBQC1", "mpsca": "TDP/EMB/AEBQ3/NE/232/D/230", "type": "ARMOIRE METALLIQUE", "installation": "TDP  ", "implantation": "AEBQ TUNNEL 3 GPMM AE SECU", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 256, "lat": 43.3066385, "lon": 5.364028, "designation": "AE SECU 1", "mpsca": "TDP/EMB/AEBQ3/NE/233/D/230", "type": "ARMOIRE METALLIQUE", "installation": "TDP  ", "implantation": "AEBQ TUNNEL 3 GPMM AE SECU", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 257, "lat": 43.3066385, "lon": 5.3639878, "designation": "AGSC 1", "mpsca": "TDP/EMB/AEBQ3/NE/234/D/230", "type": "COFFRET METALLIQUE", "installation": "TDP  ", "implantation": "AEBQ TUNNEL 3 GPMM AE SECU", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 258, "lat": 43.3063444, "lon": 5.364551, "designation": "COFFRET RIDEAU PK1", "mpsca": "TDP/PKR/E/12/C/230", "type": "COFFRET ", "installation": "TDP  ", "implantation": "ENTREE PARKING PK1", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 259, "lat": 43.3061745, "lon": 5.3646116, "designation": "COFFRET CFA 5", "mpsca": "NON REPERTORIE", "type": "COFFRET METALLIQUE", "installation": "TDP  ", "implantation": "PK1 / CFA / LOCAL DESENFUMAGE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 260, "lat": 43.3061735, "lon": 5.3645486, "designation": "COFFRET VIDEO CV3", "mpsca": "NON REPERTORIE", "type": "COFFRET METALLIQUE", "installation": "TDP  ", "implantation": "PK1 / CFA / LOCAL DESENFUMAGE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 261, "lat": 43.3062214, "lon": 5.3646076, "designation": "COFFRET GTC N\u00b05", "mpsca": "NON REPERTORIE", "type": "COFFRET METALLIQUE", "installation": "TDP  ", "implantation": "PK1 / CFA / LOCAL DESENFUMAGE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 262, "lat": 43.3062233, "lon": 5.364554, "designation": "COFFRET GTB N\u00b05", "mpsca": "NON REPERTORIE", "type": "COFFRET METALLIQUE", "installation": "TDP  ", "implantation": "PK1 / CFA / LOCAL DESENFUMAGE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 263, "lat": 43.3061901, "lon": 5.3646761, "designation": "TGR PK", "mpsca": "TDP/PKR/AEBQ/S/14/D/230-400", "type": "ARMOIRE METALLIQUE", "installation": "TDP  ", "implantation": "PK1 / AEBQ PK1", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 264, "lat": 43.3061911, "lon": 5.3647243, "designation": "AEBQ PK1", "mpsca": "TDP/PKR/AEBQ/S/13/D/230-400", "type": "ARMOIRE METALLIQUE", "installation": "TDP  ", "implantation": "PK1 / AEBQ PK1", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 265, "lat": 43.3062487, "lon": 5.3647244, "designation": "TGS PK1", "mpsca": "TDP/PKR/TGS/S/15/D/230-400", "type": "ARMOIRE METALLIQUE", "installation": "TDP  ", "implantation": "PK1 / TGS", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 266, "lat": 43.3062467, "lon": 5.3646719, "designation": "AGSC PK1", "mpsca": "TDP/PKR/TGS/S/16/D/230-400", "type": "ARMOIRE METALLIQUE", "installation": "TDP  ", "implantation": "PK1 / TGS", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 267, "lat": 43.3062877, "lon": 5.3643697, "designation": "AEBQ PK2", "mpsca": "TDP/PKR/AEBQ/O/17/D/230-400", "type": "ARMOIRE METALLIQUE", "installation": "TDP  ", "implantation": "PK2 / AEBQ GPMM PK2", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 268, "lat": 43.3062546, "lon": 5.3642826, "designation": "AGSC PK2", "mpsca": "TDP/PKR/AEBQ/O/18/D/230-400", "type": "COFFRET", "installation": "TDP  ", "implantation": "PK2 / AEBQ GPMM PK2", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 269, "lat": 43.3062555, "lon": 5.3643269, "designation": "COFFRET CFA 4", "mpsca": "TDP/PKR/AEBQ/O/19/D/230-400", "type": "COFFRET METALLIQUE", "installation": "TDP  ", "implantation": "PK2 / AEBQ GPMM PK2", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 270, "lat": 43.3062868, "lon": 5.3643242, "designation": "COFFRET GTB N\u00b06", "mpsca": "TDP/PKR/AEBQ/O/21/GTB/230", "type": "COFFRET METALLIQUE", "installation": "TDP  ", "implantation": "PK2 / AEBQ GPMM PK2", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 271, "lat": 43.3062565, "lon": 5.3643738, "designation": "COFFRET GTC N\u00b06", "mpsca": "TDP/PKR/AEBQ/O/22/GTB/230", "type": "COFFRET METALLIQUE", "installation": "TDP  ", "implantation": "PK2 / AEBQ GPMM PK2", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 272, "lat": 43.3062868, "lon": 5.3642853, "designation": "COFFRET VIDEO CV31", "mpsca": "TDP/PKR/AEBQ/O/20/V/230", "type": "COFFRET METALLIQUE", "installation": "TDP  ", "implantation": "PK2 / AEBQ GPMM PK2", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 273, "lat": 3.3058462, "lon": 5.3644582, "designation": "TD SPRINKLER GPMM", "mpsca": "TDP/SPK/45/D/400", "type": "COFFRET METALLIQUE", "installation": "TDP  ", "implantation": "SPRINKLAGE P6", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 274, "lat": 43.3058472, "lon": 5.3644193, "designation": "COFFRET NIVEAU CUVE", "mpsca": "TDP/SPK/46/D/230", "type": "COFFRET METALLIQUE", "installation": "TDP  ", "implantation": "SPRINKLAGE P6", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 275, "lat": 43.3058218, "lon": 5.3644166, "designation": "COFFRET CFA 6", "mpsca": "TDP/SPK/47/D/230", "type": "COFFRET METALLIQUE", "installation": "TDP  ", "implantation": "SPRINKLAGE P6", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 276, "lat": 43.3058218, "lon": 5.3644984, "designation": "COFFRET VENTILATION VS12 VE32", "mpsca": "TDP/SPK/42/D/400", "type": "COFFRET METALLIQUE", "installation": "TDP  ", "implantation": "SPRINKLAGE P6", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 277, "lat": 43.3058208, "lon": 5.3644555, "designation": "COFFRET GTB N\u00b07", "mpsca": "TDP/SPK/43/GTB/230", "type": "COFFRET METALLIQUE", "installation": "TDP  ", "implantation": "SPRINKLAGE P6", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 278, "lat": 43.3058472, "lon": 5.3644971, "designation": "COFFRET GTC N\u00b07", "mpsca": "TDP/SPK/44/GTC/230", "type": "COFFRET METALLIQUE", "installation": "TDP  ", "implantation": "SPRINKLAGE P6", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 279, "lat": 43.3047638, "lon": 5.3649405, "designation": "TGBT NORMAL", "mpsca": "GM/T2/1/D/230-400", "type": "ARMOIRE METALLIQUE", "installation": "GARE MARITIME T2", "implantation": "LOCAL TECHNIQUE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 280, "lat": 43.3047394, "lon": 5.3649351, "designation": "TGBT SECOURU", "mpsca": "GM/T2/1/D/230-400", "type": "ARMOIRE METALLIQUE", "installation": "GARE MARITIME T2", "implantation": "LOCAL TECHNIQUE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 281, "lat": 43.3047442, "lon": 5.3648882, "designation": "????????", "mpsca": "T2/0/R/230", "type": "COFFRET", "installation": "GARE MARITIME T2", "implantation": "LOCAL TECHNIQUE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 282, "lat": 43.3047706, "lon": 5.3648895, "designation": "GTB", "mpsca": "GM/T2/2/GTC/230", "type": "COFFRET METALLIQUE", "installation": "GARE MARITIME T2", "implantation": "LOCAL TECHNIQUE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 283, "lat": 43.304796, "lon": 5.3648909, "designation": "API", "mpsca": "GM/T2/3/API/230", "type": "COFFRET", "installation": "GARE MARITIME T2", "implantation": "LOCAL TECHNIQUE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 284, "lat": 43.30475, "lon": 5.3649973, "designation": "CLIM", "mpsca": "GM/T2/4D/230", "type": "COFFRET METALLIQUE", "installation": "GARE MARITIME T2", "implantation": "LOCAL CLIM", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 285, "lat": 43.3075319, "lon": 5.3635746, "designation": "TGBT", "mpsca": "N/A", "type": "ARMOIRE METALLIQUE", "installation": "GALERIE M2", "implantation": "LOCAL CFO", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 286, "lat": 43.3074896, "lon": 5.3635591, "designation": "ONDULEUR", "mpsca": "N/A", "type": "N/A", "installation": "GALERIE M2", "implantation": "LOCA CFA", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 287, "lat": 43.3004, "lon": 5.36243, "designation": "TT 01 SANITAIRE", "mpsca": "GM/MAJ/SE/44/G/400-230", "type": "COFFRET METALLIQUE", "installation": "TERRE PLEIN 93", "implantation": "SANITAIRE 01", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 288, "lat": 43.30053, "lon": 5.36273, "designation": "TT 02 SANITAIRE", "mpsca": "GM/MAJ/SE/44/G/400-230", "type": "COFFRET METALLIQUE", "installation": "TERRE PLEIN 93", "implantation": "SANITAIRE 02", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 289, "lat": 43.30205, "lon": 5.3633, "designation": "TT 03 SANITAIRE", "mpsca": "GM/MAJ/SE/48/G/400-230", "type": "COFFRET METALLIQUE", "installation": "TERRE PLEIN 86", "implantation": "SANITAIRE 03", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 290, "lat": 43.30168, "lon": 5.36245, "designation": "TT 04 SANITAIRE", "mpsca": "GM/MAJ/SE/47/G/400-230", "type": "COFFRET METALLIQUE", "installation": "TERRE PLEIN 86", "implantation": "SANITAIRE 04", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 291, "lat": 43.29954, "lon": 5.36275, "designation": "TD 09", "mpsca": "GM/MAJ/SE/51/G/400-230", "type": "COFFRET METALLIQUE", "installation": "TERRE PLEIN 93", "implantation": "SOUS PASSERELLE GUIDE 95", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 292, "lat": 43.30033, "lon": 5.36229, "designation": "TG", "mpsca": "GM/MAJ/SE/50/G/400-230", "type": "COFFRET METALLIQUE", "installation": "TERRE PLEIN 93", "implantation": "LOCAL TECHNIQUE STD1", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 293, "lat": 43.3003212, "lon": 5.3622632, "designation": "STD1", "mpsca": "GM/MAJ/SE/49/G/400-230", "type": "COFFRET METALLIQUE", "installation": "TERRE PLEIN 93", "implantation": "LOCAL TECHNIQUE STD1", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 294, "lat": 43.30046, "lon": 5.36259, "designation": "STD2", "mpsca": "GM/MAJ/SE/56/G/400-230", "type": "COFFRET METALLIQUE", "installation": "TERRE PLEIN 93", "implantation": "LOCAL TECHNIQUE STD2", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 295, "lat": 43.3019666, "lon": 5.3630711, "designation": "STD3", "mpsca": "GM/MAJ/SE/55/G/400-230", "type": "COFFRET METALLIQUE", "installation": "TERRE PLEIN 86", "implantation": "LOCAL TECHNIQUE STD3", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 296, "lat": 43.30177, "lon": 5.36266, "designation": "TG STD3-STD4", "mpsca": "GM/MAJ/SE/54/G/400-230", "type": "COFFRET METALLIQUE", "installation": "TERRE PLEIN 86", "implantation": "LOCAL TECHNIQUE STD3", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 297, "lat": 43.3017583, "lon": 5.3626305, "designation": "STD4", "mpsca": "GM/MAJ/SE/53/G/400-230", "type": "COFFRET METALLIQUE", "installation": "TERRE PLEIN 86", "implantation": "LOCAL TECHNIQUE STD4", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 298, "lat": 43.30146, "lon": 5.3632, "designation": "TD05", "mpsca": "?", "type": "COFFRET METALLIQUE", "installation": "TERRE PLEIN 86", "implantation": "SOUS PASSERELLE GUIDE 86", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 299, "lat": 43.30059, "lon": 5.36288, "designation": "TD 06", "mpsca": "GM/MAJ/SE/46/D/230", "type": "COFFRET METALLIQUE", "installation": "TERRE PLEIN 93", "implantation": "SOUS PASSERELLE GUIDE 93", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 300, "lat": 43.30026, "lon": 5.36217, "designation": "TD 08", "mpsca": "ENC/ECLAIRAGE/S/C/2/230", "type": "COFFRET METALLIQUE", "installation": "TERRE PLEIN 93", "implantation": "PASSERELLE GUIDE 93", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 301, "lat": 43.30184, "lon": 5.36279, "designation": "TD 07", "mpsca": "ENC/ECLAIRAGE/S/C/1/230", "type": "COFFRET METALLIQUE", "installation": "TERRE PLEIN 86", "implantation": "PASSERELLE GUIDE 86", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 302, "lat": 43.2989111, "lon": 5.3628069, "designation": "TD PAF", "mpsca": "GM/POLICE/SE/19/G/230", "type": "COFFRET METALLIQUE", "installation": "J4", "implantation": "BUREAU DE CONTROLE PAF", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 303, "lat": 43.29894, "lon": 5.36286, "designation": "TT G1", "mpsca": "GM/POLICE/SE/18/G/230", "type": "TABLEAU", "installation": "J4", "implantation": "GUERITE 01 PAF", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 304, "lat": 43.29888, "lon": 5.36289, "designation": "TT G2", "mpsca": "GM/POLICE/SE/17/G/230", "type": "TABLEAU", "installation": "J4", "implantation": "GUERITE 02 PAF", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 305, "lat": 43.29892, "lon": 5.36296, "designation": "TT G3", "mpsca": "GM/POLICE/SE/16/G/230", "type": "TABLEAU", "installation": "J4", "implantation": "GUERITE 03 PAF", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 306, "lat": 43.29895, "lon": 5.36302, "designation": "TT G4", "mpsca": "GM/POLICE/SE/15/G/230", "type": "TABLEAU", "installation": "J4", "implantation": "GUERITE 04 PAF", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 307, "lat": 43.29897, "lon": 5.3631, "designation": "TT G5", "mpsca": "GM/POLICE/SE/14/G/230", "type": "TABLEAU", "installation": "J4", "implantation": "GUERITE 05 PAF", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 308, "lat": 43.29856, "lon": 5.36216, "designation": "TD LT J4", "mpsca": "GM/MAJ/SE/52/G/400-230", "type": "TABLEAU", "installation": "J4", "implantation": "LOCAL TECHNIQUE J4", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 309, "lat": 43.2984278, "lon": 5.3618521, "designation": "TD DOUANE J4", "mpsca": "GM/DOUANE/SE/53/G/230", "type": "ARMOIRE METALLIQUE", "installation": "J4", "implantation": "BUREAU DE CONTROLE DOUANE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 310, "lat": 43.2980278, "lon": 5.360929, "designation": "TGBT", "mpsca": "N/A", "type": "COFFRET METALLIQUE", "installation": "GARE MARITIME 95", "implantation": "LOCAL TECHNIQUE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}, {"id": 311, "lat": 43.2980151, "lon": 5.360951, "designation": "TD", "mpsca": "N/A", "type": "COFFRET METALLIQUE", "installation": "GARE MARITIME 95", "implantation": "LOCAL TECHNIQUE", "photos": [{"thumbnail": null, "hdLink": null}, {"thumbnail": null, "hdLink": null}], "pdfLink": null}];
+        let markers = {};
+        let map;
+        let nextId = markersData.length;
+        let longPressTimer = null;
+        let longPressCoords = null;
+        let editingPdfMarkerId = null;
+        
+        
+        // Conversion HEIC vers JPEG
+        async function convertHeicToJpeg(file) {
+            try {
+                // Vérifier si c'est un fichier HEIC
+                const fileName = file.name.toLowerCase();
+                if (!fileName.endsWith('.heic') && !fileName.endsWith('.heif')) {
+                    return file; // Pas un HEIC, retourner le fichier original
+                }
+                
+                console.log('Conversion HEIC en cours...');
+                
+                // Convertir HEIC en Blob JPEG
+                const convertedBlob = await heic2any({
+                    blob: file,
+                    toType: 'image/jpeg',
+                    quality: 0.9
+                });
+                
+                // Créer un nouveau File à partir du Blob
+                const convertedFile = new File(
+                    [convertedBlob], 
+                    file.name.replace(/\.heic$/i, '.jpg').replace(/\.heif$/i, '.jpg'),
+                    { type: 'image/jpeg' }
+                );
+                
+                console.log('Conversion HEIC terminée');
+                return convertedFile;
+                
+            } catch (error) {
+                console.error('Erreur conversion HEIC:', error);
+                throw new Error('Impossible de convertir le fichier HEIC. Essayez de le convertir en JPG manuellement.');
+            }
+        }
+        
+        // Compression ultra-optimisée pour miniatures (5 KB)
+        function compressImageMiniature(file, maxWidth = 600, quality = 0.4) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+                        
+                        if (width > maxWidth) {
+                            height = (height * maxWidth) / width;
+                            width = maxWidth;
+                        }
+                        
+                        canvas.width = width;
+                        canvas.height = height;
+                        
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        const compressedData = canvas.toDataURL('image/jpeg', quality);
+                        resolve(compressedData);
+                    };
+                    img.onerror = reject;
+                    img.src = e.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+        
+        function updateStorageIndicator() {
+            const totalPhotos = markersData.reduce((count, m) => {
+                return count + (m.photos ? m.photos.filter(p => p.thumbnail !== null).length : 0);
+            }, 0);
+            
+            const totalPDFs = markersData.reduce((count, m) => {
+                return count + (m.pdfLink ? 1 : 0);
+            }, 0);
+            
+            const percentage = (totalPhotos / 1000) * 100;
+            const barFill = document.getElementById('storage-bar');
+            
+            barFill.style.width = percentage + '%';
+            
+            if (percentage > 90) {
+                barFill.className = 'storage-bar-fill danger';
+            } else if (percentage > 70) {
+                barFill.className = 'storage-bar-fill warning';
+            } else {
+                barFill.className = 'storage-bar-fill';
+            }
+            
+            document.getElementById('storage-text').textContent = `${totalPhotos} / 1000 miniatures`;
+            document.getElementById('pdf-number').textContent = totalPDFs;
+        }
+        
+        // Fonctions de gestion du stockage
+        function getStorageInfo() {
+            let totalSize = 0;
+            for (let key in localStorage) {
+                if (localStorage.hasOwnProperty(key)) {
+                    totalSize += (localStorage[key].length + key.length) * 2;
+                }
+            }
+            
+            const totalPhotos = markersData.reduce((count, m) => {
+                return count + (m.photos ? m.photos.filter(p => p.thumbnail !== null).length : 0);
+            }, 0);
+            
+            return {
+                sizeBytes: totalSize,
+                sizeMB: (totalSize / (1024 * 1024)).toFixed(2),
+                photos: totalPhotos,
+                percentage: ((totalSize / (5 * 1024 * 1024)) * 100).toFixed(1)
+            };
+        }
+        
+        function updateStorageDisplay() {
+            const info = getStorageInfo();
+            
+            document.getElementById('space-used').textContent = info.sizeMB + ' MB';
+            document.getElementById('photos-stored').textContent = info.photos;
+            
+            const barFill = document.getElementById('storage-bar-fill');
+            barFill.style.width = info.percentage + '%';
+            barFill.textContent = info.percentage + '%';
+            
+            if (info.percentage > 90) {
+                barFill.className = 'storage-bar-fill-modal danger';
+            } else if (info.percentage > 70) {
+                barFill.className = 'storage-bar-fill-modal warning';
+            } else {
+                barFill.className = 'storage-bar-fill-modal';
+            }
+        }
+        
+        function openStorageWindow() {
+            updateStorageDisplay();
+            document.getElementById('storage-modal').classList.add('active');
+        }
+        
+        function closeStorageWindow() {
+            document.getElementById('storage-modal').classList.remove('active');
+        }
+        
+        function cleanOldData() {
+            const oldKeys = [
+                'coffrets_data_v5', 'coffrets_data_v4', 'coffrets_data_v3', 
+                'coffrets_data_v2', 'coffrets_data_v1', 'coffrets_data_v6',
+                'coffrets_photos_v3', 'coffrets_photos_v2', 'coffrets_photos_v1'
+            ];
+            
+            let cleaned = 0;
+            let freedMB = 0;
+            
+            oldKeys.forEach(key => {
+                const item = localStorage.getItem(key);
+                if (item) {
+                    freedMB += (item.length * 2) / (1024 * 1024);
+                    localStorage.removeItem(key);
+                    cleaned++;
+                }
+            });
+            
+            if (cleaned > 0) {
+                alert('✅ Nettoyage terminé!\n\n' + cleaned + ' anciennes versions supprimées\nEspace libéré: ' + freedMB.toFixed(2) + ' MB\n\nVous pouvez maintenant ajouter des photos!');
+                updateStorageDisplay();
+                updateStorageIndicator();
+            } else {
+                alert('ℹ️ Aucune ancienne version trouvée.\nVotre stockage est déjà propre!');
+            }
+        }
+        
+        function clearAllData() {
+            if (confirm('⚠️ ATTENTION!\n\nVoulez-vous vraiment TOUT supprimer?\n\n• Tous les coffrets\n• Toutes les photos\n• Tous les liens\n\nCette action est IRRÉVERSIBLE!')) {
+                if (confirm('Dernière confirmation:\n\nÊtes-vous VRAIMENT sûr?')) {
+                    localStorage.clear();
+                    alert('✅ Toutes les données effacées.\nLa page va se recharger.');
+                    location.reload();
+                }
+            }
+        }
+        
+
+        function toggleInstallationDropdown() {
+            const dropdown = document.getElementById('installation-dropdown');
+            dropdown.classList.toggle('collapsed');
+            localStorage.setItem('installation-dropdown-collapsed', dropdown.classList.contains('collapsed'));
+        }
+        
+        function filterByInstallation() {
+            const select = document.getElementById('installation-select');
+            const installation = select.value;
+            
+            if (installation) {
+                document.getElementById('search-input').value = installation;
+                performSearch();
+            } else {
+                document.getElementById('search-input').value = '';
+                performSearch();
+            }
+        }
+        
+        function restoreInstallationDropdownState() {
+            const collapsed = localStorage.getItem('installation-dropdown-collapsed') === 'true';
+            if (collapsed) {
+                document.getElementById('installation-dropdown').classList.add('collapsed');
+            }
+        }
+        
+        function toggleSearchPanel() {
+            const panel = document.getElementById('search-panel');
+            panel.classList.toggle('collapsed');
+            panel.classList.toggle('expanded');
+            localStorage.setItem('search-panel-collapsed', panel.classList.contains('collapsed'));
+        }
+        
+        function toggleInfoPanel() {
+            const panel = document.getElementById('info-panel');
+            panel.classList.toggle('collapsed');
+            panel.classList.toggle('expanded');
+            localStorage.setItem('info-panel-collapsed', panel.classList.contains('collapsed'));
+        }
+        
+        function restorePanelStates() {
+            const searchCollapsed = localStorage.getItem('search-panel-collapsed') === 'true';
+            const infoCollapsed = localStorage.getItem('info-panel-collapsed') === 'true';
+            
+            if (searchCollapsed) {
+                document.getElementById('search-panel').classList.remove('expanded');
+                document.getElementById('search-panel').classList.add('collapsed');
+            }
+            
+            if (infoCollapsed) {
+                document.getElementById('info-panel').classList.remove('expanded');
+                document.getElementById('info-panel').classList.add('collapsed');
+            }
+        }
+        
+        function loadPhotos() {
+            const saved = localStorage.getItem('coffrets_data_hybrid_v1');
+            if (saved) {
+                try {
+                    markersData = JSON.parse(saved);
+                    nextId = Math.max(...markersData.map(m => m.id)) + 1;
+                } catch (e) {
+                    console.error('Erreur chargement données:', e);
+                }
+            }
+            
+            updatePhotoCount();
+            updateTotalCount();
+            updateStorageIndicator();
+        }
+        
+        function saveAllData() {
+            try {
+                localStorage.setItem('coffrets_data_hybrid_v1', JSON.stringify(markersData));
+                updatePhotoCount();
+                updateStorageIndicator();
+            } catch (e) {
+                if (e.name === 'QuotaExceededError') {
+                    alert('❌ STOCKAGE SATURÉ!\n\n💾 Exportez vos données\n🗑️ Supprimez des photos anciennes');
+                } else {
+                    alert('❌ Erreur de sauvegarde: ' + e.message);
+                }
+                throw e;
+            }
+        }
+        
+        function updatePhotoCount() {
+            const count = markersData.filter(m => m.photos && m.photos.some(p => p.thumbnail !== null)).length;
+            document.getElementById('photo-number').textContent = count;
+        }
+        
+        function updateTotalCount() {
+            document.getElementById('total-number').textContent = markersData.length;
+        }
+        
+        function openAddMarkerModal(lat, lng) {
+            longPressCoords = {lat, lng};
+            document.getElementById('new-coords').textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+            document.getElementById('add-marker-modal').classList.add('active');
+            document.getElementById('new-designation').focus();
+        }
+        
+        function closeAddMarkerModal() {
+            document.getElementById('add-marker-modal').classList.remove('active');
+            document.getElementById('add-marker-form').reset();
+            longPressCoords = null;
+        }
+        
+        document.getElementById('add-marker-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const newMarker = {
+                id: nextId++,
+                lat: longPressCoords.lat,
+                lon: longPressCoords.lng,
+                designation: document.getElementById('new-designation').value,
+                mpsca: document.getElementById('new-mpsca').value || 'N/A',
+                type: document.getElementById('new-type').value || 'N/A',
+                installation: document.getElementById('new-installation').value,
+                implantation: document.getElementById('new-implantation').value || 'N/A',
+                photos: [
+                    {thumbnail: null, hdLink: null},
+                    {thumbnail: null, hdLink: null}
+                ],
+                pdfLink: null
+            };
+            
+            markersData.push(newMarker);
+            addMarkerToMap(newMarker);
+            saveAllData();
+            updateTotalCount();
+            
+            closeAddMarkerModal();
+            
+            map.setView([newMarker.lat, newMarker.lon], 20);
+            markers[newMarker.id].openPopup();
+            
+            alert('✅ Nouveau coffret ajouté avec succès!');
+        });
+        
+        function exportData() {
+            const dataStr = JSON.stringify(markersData, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'coffrets_electriques_hybrid_' + new Date().toISOString().split('T')[0] + '.json';
+            link.click();
+            URL.revokeObjectURL(url);
+            alert('✅ Données exportées avec succès!');
+        }
+        
+        function importData(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const imported = JSON.parse(e.target.result);
+                        markersData = imported;
+                        saveAllData();
+                        alert('✅ Données importées avec succès! Rechargez la page.');
+                        location.reload();
+                    } catch (error) {
+                        alert('❌ Erreur lors de l\'importation: ' + error.message);
+                    }
+                };
+                reader.readAsText(file);
+            }
+        }
+        
+        function performSearch() {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            const resultsContainer = document.getElementById('search-results');
+            
+            if (!query) {
+                resultsContainer.innerHTML = '<div class="no-results">Tapez pour rechercher...</div>';
+                return;
+            }
+            
+            const results = markersData.filter(marker => 
+                marker.installation.toLowerCase().includes(query) ||
+                marker.implantation.toLowerCase().includes(query) ||
+                marker.designation.toLowerCase().includes(query) ||
+                marker.mpsca.toLowerCase().includes(query)
+            );
+            
+            if (results.length === 0) {
+                resultsContainer.innerHTML = '<div class="no-results">Aucun résultat trouvé</div>';
+                return;
+            }
+            
+            let html = '';
+            results.forEach(marker => {
+                const photoCount = marker.photos.filter(p => p.thumbnail !== null).length;
+                const hasPDF = marker.pdfLink ? '🔗' : '';
+                const photoBadge = photoCount > 0 ? `<span class="result-badge">📷 ${photoCount}</span>` : '';
+                
+                html += `
+                    <div class="search-result-item" onclick="zoomToMarker(${marker.id})">
+                        <strong>${marker.designation}${photoBadge} ${hasPDF}</strong>
+                        <div style="font-size: 12px; color: #555;">
+                            🏢 ${marker.installation}
+                        </div>
+                        <small>📍 ${marker.implantation}</small>
+                    </div>
+                `;
+            });
+            
+            resultsContainer.innerHTML = html;
+        }
+        
+        window.zoomToMarker = function(markerId) {
+            const marker = markersData.find(m => m.id === markerId);
+            if (marker && markers[markerId]) {
+                map.setView([marker.lat, marker.lon], 20);
+                markers[markerId].openPopup();
+            }
+        };
+        
+        window.openPhotoModal = function(photoData) {
+            document.getElementById('modal-photo').src = photoData;
+            document.getElementById('photo-modal').classList.add('active');
+        };
+        
+        window.closePhotoModal = function() {
+            document.getElementById('photo-modal').classList.remove('active');
+        };
+        
+        window.deleteMarker = function(markerId) {
+            if (confirm('⚠️ Voulez-vous vraiment supprimer ce coffret?\nCette action est irréversible!')) {
+                const index = markersData.findIndex(m => m.id === markerId);
+                if (index !== -1) {
+                    markersData.splice(index, 1);
+                    if (markers[markerId]) {
+                        map.removeLayer(markers[markerId]);
+                        delete markers[markerId];
+                    }
+                    saveAllData();
+                    updateTotalCount();
+                    alert('✅ Coffret supprimé!');
+                }
+            }
+        };
+        
+        window.openPDFLink = function(link) {
+            window.open(link, '_blank');
+        };
+        
+        window.openHDPhoto = function(link) {
+            if (link) {
+                window.open(link, '_blank');
+            } else {
+                alert('ℹ️ Aucun lien HD défini pour cette photo');
+            }
+        };
+        
+        window.editPDFLink = function(markerId) {
+            editingPdfMarkerId = markerId;
+            const marker = markersData.find(m => m.id === markerId);
+            markers[markerId].closePopup();
+            setTimeout(() => {
+                markers[markerId].setPopupContent(createPopupContentEditPDF(marker));
+                markers[markerId].openPopup();
+            }, 50);
+        };
+        
+        window.savePDFLink = function(markerId) {
+            const input = document.getElementById(`pdf-link-input-${markerId}`);
+            const link = input.value.trim();
+            
+            if (link && !link.match(/^https?:\/\//)) {
+                alert('❌ Le lien doit commencer par http:// ou https://');
+                return;
+            }
+            
+            const marker = markersData.find(m => m.id === markerId);
+            marker.pdfLink = link || null;
+            saveAllData();
+            
+            editingPdfMarkerId = null;
+            markers[markerId].closePopup();
+            setTimeout(() => {
+                markers[markerId].setPopupContent(createPopupContent(marker));
+                markers[markerId].openPopup();
+            }, 50);
+        };
+        
+        window.removePDFLink = function(markerId) {
+            if (confirm('Voulez-vous vraiment supprimer ce lien PDF?')) {
+                const marker = markersData.find(m => m.id === markerId);
+                marker.pdfLink = null;
+                saveAllData();
+                
+                markers[markerId].closePopup();
+                setTimeout(() => {
+                    markers[markerId].setPopupContent(createPopupContent(marker));
+                    markers[markerId].openPopup();
+                }, 50);
+            }
+        };
+        
+        window.editPhotoHDLink = function(markerId, photoIndex) {
+            const marker = markersData.find(m => m.id === markerId);
+            const currentLink = marker.photos[photoIndex].hdLink || '';
+            const newLink = prompt('🔗 Lien vers photo HD (Google Drive):\n\nConseils:\n1. Partagez la photo sur Drive\n2. Obtenez le lien de partage\n3. Collez-le ici', currentLink);
+            
+            if (newLink !== null) {
+                if (newLink.trim() && !newLink.match(/^https?:\/\//)) {
+                    alert('❌ Le lien doit commencer par http:// ou https://');
+                    return;
+                }
+                
+                marker.photos[photoIndex].hdLink = newLink.trim() || null;
+                saveAllData();
+                
+                markers[markerId].closePopup();
+                setTimeout(() => {
+                    markers[markerId].setPopupContent(createPopupContent(marker));
+                    markers[markerId].openPopup();
+                }, 50);
+            }
+        };
+        
+        function createPopupContentEditPDF(marker) {
+            let photosHtml = '<div class="photos-container">';
+            for (let i = 0; i < 2; i++) {
+                if (marker.photos[i].thumbnail) {
+                    const hdIcon = marker.photos[i].hdLink ? '<div class="photo-hd-icon">HD</div>' : '';
+                    photosHtml += `
+                        <div class="photo-slot">
+                            ${hdIcon}
+                            <img src="${marker.photos[i].thumbnail}" alt="Photo ${i+1}" onclick="openPhotoModal('${marker.photos[i].thumbnail}')">
+                            <button class="photo-remove-btn" onclick="event.stopPropagation(); removePhoto(${marker.id}, ${i})">✕</button>
+                        </div>
+                    `;
+                } else {
+                    photosHtml += `
+                        <div class="photo-slot">
+                            <div class="photo-slot-empty">
+                                <div>📷</div>
+                                <div>Photo ${i+1}</div>
+                            </div>
+                            <input type="file" id="photo-input-${marker.id}-${i}" accept="image/*,.heic,.heif" style="display:none" onchange="addPhoto(${marker.id}, ${i}, event)">
+                            <button class="photo-upload-btn" onclick="event.stopPropagation(); document.getElementById('photo-input-${marker.id}-${i}').click()">+</button>
+                        </div>
+                    `;
+                }
+            }
+            photosHtml += '</div>';
+            
+            const pdfHtml = `
+                <div class="pdf-container">
+                    <div class="pdf-input-zone">
+                        <label style="font-weight: bold; display: block; margin-bottom: 5px;">🔗 Lien vers le PDF:</label>
+                        <input type="url" 
+                               id="pdf-link-input-${marker.id}" 
+                               class="pdf-input" 
+                               placeholder="https://drive.google.com/file/d/..." 
+                               value="${marker.pdfLink || ''}"
+                               onkeypress="if(event.key==='Enter'){event.preventDefault();savePDFLink(${marker.id})}">
+                        <div class="helper-text">Google Drive, Dropbox, OneDrive, ou tout lien web</div>
+                        <button class="btn-save-pdf" onclick="event.stopPropagation(); savePDFLink(${marker.id})">✅ Enregistrer</button>
+                    </div>
+                </div>
+            `;
+            
+            return `
+                <div class="popup-content">
+                    <div><strong>🔌 ${marker.designation}</strong></div>
+                    <hr style="margin: 5px 0;">
+                    <div><strong>MPSCA:</strong> ${marker.mpsca}</div>
+                    <div><strong>Type:</strong> ${marker.type}</div>
+                    <div><strong>Installation:</strong> ${marker.installation}</div>
+                    <div><strong>Implantation:</strong> ${marker.implantation}</div>
+                    <hr style="margin: 5px 0;">
+                    <div style="font-size: 11px; font-weight: bold; margin-bottom: 3px;">🖼️ Photos (Mini 5KB):</div>
+                    ${photosHtml}
+                    <div style="font-size: 12px; font-weight: bold; margin: 10px 0 5px 0;">📄 Document PDF:</div>
+                    ${pdfHtml}
+                    <div style="margin-top: 8px; font-size: 11px; color: #666;">
+                        📍 ${marker.lat.toFixed(6)}, ${marker.lon.toFixed(6)}
+                    </div>
+                    <button class="btn-delete" onclick="event.stopPropagation(); deleteMarker(${marker.id})">🗑️ Supprimer ce coffret</button>
+                </div>
+            `;
+        }
+        
+        function createPopupContent(marker) {
+            let photosHtml = '<div class="photos-container">';
+            for (let i = 0; i < 2; i++) {
+                if (marker.photos[i].thumbnail) {
+                    const hdIcon = marker.photos[i].hdLink ? '<div class="photo-hd-icon" title="Cliquez pour la HD">HD</div>' : '';
+                    const onClick = marker.photos[i].hdLink ? 
+                        `onclick="openHDPhoto('${marker.photos[i].hdLink}')"` : 
+                        `onclick="openPhotoModal('${marker.photos[i].thumbnail}')"`;
+                    
+                    photosHtml += `
+                        <div class="photo-slot">
+                            ${hdIcon}
+                            <img src="${marker.photos[i].thumbnail}" alt="Photo ${i+1}" ${onClick} style="cursor: pointer;">
+                            <button class="photo-remove-btn" onclick="event.stopPropagation(); removePhoto(${marker.id}, ${i})">✕</button>
+                            <button class="photo-upload-btn" onclick="event.stopPropagation(); editPhotoHDLink(${marker.id}, ${i})" style="bottom: 25px; background: #6c5ce7;">🔗</button>
+                        </div>
+                    `;
+                } else {
+                    photosHtml += `
+                        <div class="photo-slot">
+                            <div class="photo-slot-empty">
+                                <div>📷</div>
+                                <div>Mini 5KB</div><div style="font-size: 8px;">JPG/PNG/HEIC</div>
+                            </div>
+                            <input type="file" id="photo-input-${marker.id}-${i}" accept="image/*,.heic,.heif" style="display:none" onchange="addPhoto(${marker.id}, ${i}, event)">
+                            <button class="photo-upload-btn" onclick="event.stopPropagation(); document.getElementById('photo-input-${marker.id}-${i}').click()">+</button>
+                        </div>
+                    `;
+                }
+            }
+            photosHtml += '</div>';
+            
+            let pdfHtml = '<div class="pdf-container">';
+            if (marker.pdfLink) {
+                const displayLink = marker.pdfLink.length > 50 ? marker.pdfLink.substring(0, 47) + '...' : marker.pdfLink;
+                pdfHtml += `
+                    <div class="pdf-link-display">
+                        <div class="pdf-icon">📄</div>
+                        <div class="pdf-link-text" title="${marker.pdfLink}">${displayLink}</div>
+                    </div>
+                    <div class="pdf-actions">
+                        <button class="btn-open-pdf" onclick="event.stopPropagation(); openPDFLink('${marker.pdfLink}')">🔗 Ouvrir</button>
+                        <button class="btn-edit-pdf" onclick="event.stopPropagation(); editPDFLink(${marker.id})">✏️ Modifier</button>
+                        <button class="btn-remove-pdf" onclick="event.stopPropagation(); removePDFLink(${marker.id})">✕</button>
+                    </div>
+                `;
+            } else {
+                pdfHtml += `
+                    <div class="pdf-no-link">
+                        <div style="font-size: 32px;">🔗</div>
+                        <div>Aucun lien PDF</div>
+                        <button class="btn-edit-pdf" style="margin-top: 10px; width: auto;" onclick="event.stopPropagation(); editPDFLink(${marker.id})">+ Ajouter un lien</button>
+                        <div class="helper-text" style="margin-top: 5px;">Drive, Dropbox, OneDrive...</div>
+                    </div>
+                `;
+            }
+            pdfHtml += '</div>';
+            
+            return `
+                <div class="popup-content">
+                    <div><strong>🔌 ${marker.designation}</strong> <span class="hybrid-badge">HYBRIDE</span></div>
+                    <hr style="margin: 5px 0;">
+                    <div><strong>MPSCA:</strong> ${marker.mpsca}</div>
+                    <div><strong>Type:</strong> ${marker.type}</div>
+                    <div><strong>Installation:</strong> ${marker.installation}</div>
+                    <div><strong>Implantation:</strong> ${marker.implantation}</div>
+                    <hr style="margin: 5px 0;">
+                    <div style="font-size: 11px; font-weight: bold; margin-bottom: 3px;">
+                        🖼️ Photos (Mini 5KB + 🔗 HD)
+                        <span style="font-size: 10px; color: #666; font-weight: normal;">Cliquez 🔗 pour lier la HD</span>
+                    </div>
+                    ${photosHtml}
+                    <div style="font-size: 12px; font-weight: bold; margin: 10px 0 5px 0;">📄 Document PDF:</div>
+                    ${pdfHtml}
+                    <div style="margin-top: 8px; font-size: 11px; color: #666;">
+                        📍 ${marker.lat.toFixed(6)}, ${marker.lon.toFixed(6)}
+                    </div>
+                    <button class="btn-delete" onclick="event.stopPropagation(); deleteMarker(${marker.id})">🗑️ Supprimer ce coffret</button>
+                </div>
+            `;
+        }
+        
+        window.addPhoto = async function(markerId, photoIndex, event) {
+            const input = event.target;
+            let file = input.files[0];
+            
+            if (file) {
+                if (file.size > 10 * 1024 * 1024) {
+                    alert('❌ La photo est trop volumineuse (max 10MB avant compression)');
+                    input.value = '';
+                    return;
+                }
+                
+                try {
+                    document.getElementById('loading-indicator').classList.add('active');
+                    document.getElementById('loading-text').textContent = '⏳ Traitement de la photo...';
+                    document.getElementById('loading-subtext').textContent = 'Conversion et compression en cours';
+                    
+                    // Convertir HEIC en JPEG si nécessaire
+                    file = await convertHeicToJpeg(file);
+                    
+                    document.getElementById('loading-text').textContent = '⏳ Compression miniature...';
+                    document.getElementById('loading-subtext').textContent = 'Optimisation ultra-compressée (5KB)';
+                    
+                    const compressedData = await compressImageMiniature(file, 600, 0.4);
+                    
+                    const marker = markersData.find(m => m.id === markerId);
+                    if (!marker) {
+                        throw new Error('Marqueur non trouvé');
+                    }
+                    
+                    marker.photos[photoIndex].thumbnail = compressedData;
+                    marker.photos[photoIndex].hdLink = null; // L'utilisateur pourra ajouter le lien HD après
+                    saveAllData();
+                    
+                    const hasPhotos = marker.photos.some(p => p.thumbnail !== null);
+                    if (hasPhotos) {
+                        markers[markerId].setIcon(electricIconWithPhoto);
+                    }
+                    
+                    markers[markerId].closePopup();
+                    setTimeout(() => {
+                        markers[markerId].setPopupContent(createPopupContent(marker));
+                        markers[markerId].openPopup();
+                        document.getElementById('loading-indicator').classList.remove('active');
+                        
+                        // Proposer d'ajouter le lien HD
+                        if (confirm('📷 Miniature ajoutée!\n\nVoulez-vous ajouter le lien vers la photo HD (4MB) sur Google Drive?')) {
+                            editPhotoHDLink(markerId, photoIndex);
+                        }
+                    }, 100);
+                    
+                } catch (error) {
+                    console.error('Erreur:', error);
+                    if (error.name === 'QuotaExceededError') {
+                        alert('❌ STOCKAGE SATURÉ!\n\n💾 Exportez vos données\n🗑️ Supprimez des photos anciennes');
+                    } else {
+                        alert('❌ Erreur: ' + error.message);
+                    }
+                    document.getElementById('loading-indicator').classList.remove('active');
+                }
+                
+                input.value = '';
+            }
+        };
+        
+        window.removePhoto = function(markerId, photoIndex) {
+            if (confirm('Voulez-vous vraiment supprimer cette photo (miniature + lien HD)?')) {
+                const marker = markersData.find(m => m.id === markerId);
+                marker.photos[photoIndex] = {thumbnail: null, hdLink: null};
+                saveAllData();
+                
+                const hasPhotos = marker.photos.some(p => p.thumbnail !== null);
+                if (!hasPhotos) {
+                    markers[markerId].setIcon(electricIcon);
+                }
+                
+                markers[markerId].closePopup();
+                setTimeout(() => {
+                    markers[markerId].setPopupContent(createPopupContent(marker));
+                    markers[markerId].openPopup();
+                }, 100);
+            }
+        };
+        
+        function addMarkerToMap(marker) {
+            const hasPhotos = marker.photos && marker.photos.some(p => p.thumbnail !== null);
+            const icon = hasPhotos ? electricIconWithPhoto : electricIcon;
+            
+            const leafletMarker = L.marker([marker.lat, marker.lon], {icon: icon})
+                .bindPopup(createPopupContent(marker), {
+                    maxWidth: 360,
+                    minWidth: 256
+                })
+                .addTo(map);
+            
+            markers[marker.id] = leafletMarker;
+        }
+        
+        map = L.map('map').setView([43.1980155, 5.349513535576923], 18);
+        
+        const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+            maxZoom: 19,
+            maxNativeZoom: 19
+        });
+        
+        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        });
+        
+        const topoLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+            attribution: 'Map data: © OpenStreetMap contributors',
+            maxZoom: 19
+        });
+        
+        satelliteLayer.addTo(map);
+        
+        const baseLayers = {
+            "Satellite": satelliteLayer,
+            "Plan": osmLayer,
+            "Topographique": topoLayer
+        };
+        
+        L.control.layers(baseLayers).addTo(map);
+        
+        const electricIcon = L.icon({
+            iconUrl: 'data:image/png;base64,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',
+            iconSize: [32, 32],
+            iconAnchor: [16, 32],
+            popupAnchor: [0, -32]
+        });
+        
+        const electricIconWithPhoto = L.icon({
+            iconUrl: 'data:image/png;base64,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',
+            iconSize: [32, 32],
+            iconAnchor: [16, 32],
+            popupAnchor: [0, -32],
+            className: 'marker-with-photo'
+        });
+        
+        map.on('mousedown', function(e) {
+            const indicator = document.getElementById('longpress-indicator');
+            indicator.style.left = e.originalEvent.clientX + 10 + 'px';
+            indicator.style.top = e.originalEvent.clientY + 10 + 'px';
+            indicator.style.display = 'block';
+            
+            longPressTimer = setTimeout(() => {
+                indicator.style.display = 'none';
+                openAddMarkerModal(e.latlng.lat, e.latlng.lng);
+            }, 1000);
+        });
+        
+        map.on('mouseup', function() {
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+            }
+            document.getElementById('longpress-indicator').style.display = 'none';
+        });
+        
+        map.on('mousemove', function() {
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+                document.getElementById('longpress-indicator').style.display = 'none';
+            }
+        });
+        
+        map.on('contextmenu', function(e) {
+            e.originalEvent.preventDefault();
+            openAddMarkerModal(e.latlng.lat, e.latlng.lng);
+        });
+        
+        loadPhotos();
+        restorePanelStates();
+        restoreInstallationDropdownState();
+        
+        // Liste déroulante des installations (remplace les anciens tags)
+        
+        markersData.forEach(marker => {
+            addMarkerToMap(marker);
+        });
+        
+        const bounds = L.latLngBounds(markersData.map(m => [m.lat, m.lon]));
+        map.fitBounds(bounds, {padding: [50, 50]});
+    </script>
+</body>
+</html>
